@@ -1,0 +1,81 @@
+	=====================================================
+		--> Configure mariadb.
+	=====================================================
+
+	A.) Install mariadb database and user root password is animous database sholud access only localhost.
+	B.) Create a "Conatins" datebase and restore a data base backup http://server1.group11.example.com/pub/matarials/mariadb.dump. 
+	C.) rob user can access "contains" database should be use password is "animous".
+
+	=========================================================
+	Solution:-
+	
+	**** For Installing The Packages Required For Maria Database Sever.
+	[root@ServerX ~] #   yum    groupinstall mariadb mariadb-client     -y
+	
+	****  For  Enableing & Starting The Database Service (or) Deamon.
+	[root@serverX ~] #  systemctl enable  mariadb
+	[root@ServerX ~] #  systemctl start mariadb
+
+	**** For Checking The Specific Port Of Maria Database Server is Opened & Listeing.
+	[root@ServerX ~] # ss -tulnp | grep mysql
+			(or)
+	[root@ServerX ~] # netstat   -antp  |  grep  mysql
+
+	**** Edit  The Main Configuration  File Of Maria Database Server.	
+	[root@serverX ~]# vim /etc/my.cnf
+	[mysqld]     	### ----> [Under This line]
+	skip-networking=1
+	:wq!	( Save & Quit )
+
+	****  For  Enableing & Starting The Database Service (or) Deamon.
+	[root@ServerX ~]# systemctl restart mariadb
+
+	
+	**** For Checking The Specific Port Of Maria Database Server is Opened & Listening.
+	[root@ServerX ~]# ss -tulnp| grep mysql
+			(or)
+	[root@ServerX ~] # netstat   -antp  |  grep  mysql
+
+	[Now This command should show nothing]
+
+	****  For  Installing & Completing The Maria Database Server Installation.
+	[root@serverX ~]# mysql_secure_installation
+	Enter current password for root (enter for none):   [Dont Give anything press enter]
+	Set root password? [Y/n] y
+	New password: animous [Give password]
+	Re-enter new password:  animous   [Retry same passwd]
+	Password updated successfully!
+	Reloading privilege tables..
+	 ... Success!
+	Remove anonymous users? [Y/n] y
+	Disallow root login remotely? [Y/n] y
+	Remove test database and access to it? [Y/n] y
+	Reload privilege tables now? [Y/n] y
+
+	**** For Connecting To The Maria Database Server With privillage Account.
+	[root@serverX ~]# mysql -u root -p
+	Enter password:
+	MariaDB [(none)]> create database contains;
+	MariaDB [(none)]> exit
+
+	**** For  Restoreing The Backup Content From The backup File.
+	[root@serverX ~]# mysql -u root -p contains < /root/mariadb.dump
+	Enter password:
+
+	*** For Creating a User Account For Accessing The Mariadb Database Server & Provideing Access Control[CURD].
+	[root@serverX ~]# mysql -u root -p
+	MariaDB [conatins]> CREATE USER rob@'%' IDENTIFIED BY 'animous';
+	MariaDB [conatins]> GRANT SELECT,INSERT,UPDATE,DELETE ON conatins.* TO rob@'%';
+
+	**** For Createing a  Database and a table Into that Database.
+	MariaDB [conatins]> create  database coss;
+	MariaDB [conatins]> use  coss;
+	MariaDB [conatins]> create  table instructors (NAME VARCHAR(20), TYPE VARCHAR(20), SEX CHAR(1), BATCH VARCHAR(10));
+	MariaDB [conatins]> insert into instructors (`NAME`, `TYPE`, `SEX`, `BATCH`) values ('SINGH','Guests','M', 'Morning');
+	MariaDB [conatins]> select  *  from  instructors;
+	
+	MariaDB [conatins]> exit;
+
+
+	
+

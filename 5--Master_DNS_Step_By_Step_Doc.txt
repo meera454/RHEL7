@@ -1,0 +1,278 @@
+#		   ---> Domain Nameing System (DNS Server)
+
+	--> 1.) Domain Nameing System is used for resolveing , Mapping (or) Converting Human Friendly names to computer friendly  IP Address.
+
+	--> 2.) This Resolution is done in two diffrent order.
+		A.)	Name to IP Address  { Forward lookup zone (OR)  FLZ}  .
+		B.)	IP Address to  Name { Reverse Lookup Zone (OR) RLZ}.
+
+	**** DNS Server can be configured in three different mode's.
+		A.)	Master DNS  (or) Authoritative  DNS Server.
+		B.)	Slave DNS (or)  Non Authoritative DNS Server.
+		C.)	Forwarder's (or) Caching DNS Server.
+
+********* Requirements Of DNS Server ***********
+
+	A.)	Package's
+		bind*
+	
+	B.)	Service (OR) Deamon
+		named
+
+	C.)	Port Number
+		53
+	
+	D.)	Configuration File Of DNS Server
+		/etc/named.rfc1912.zones
+		/etc/named.conf
+	
+		Zone Database Directory
+		---> /var/named
+			A.)	named.localhost { FLZ}
+			B.)	named.loopback {RLZ}
+	E.)	Debbugging Tool
+
+		named.checkconf  [ For Configuration FIle's].
+		named.checkzone [ For Zone Database File's].
+			
+	-->  STEP FOR MASTER DNS SERVER
+	
+	*** Configuration of Master DNS Server
+	
+	**** Current DNS Master IP is 192.168.0.1
+
+	**** Current DNS Slave  IP is 192.168.0.2
+
+
+Step 1: 
+
+	--> CHECK IP & HOST ENTRIES
+
+#   ---> For Checking The IP  Address & Configureing the ip address.
+	
+[root@MaterDNS ~]# ifconfig 
+[root@MaterDNS ~]# setup 
+
+#  --->  Enableing The network service's
+
+[root@MaterDNS ~]# chkconfig network on
+[root@MaterDNS ~]# service network restart
+
+# --> For Makeing The Host Name Permenent
+[root@client ~]# vi  /etc/sysconfig/network
+
+NETWORKING=yes
+HOSTNAME=MaterDNS.example.com
+:wq!  ( Save & Quit)
+
+#  --> Edit The Host File for Local System Hostname Resolution.
+[root@client ~]# vi /etc/hosts
+127.0.0.1       localhost.localdomain   localhost
+192.168.0.1     MaterDNS.example.com      MaterDNS
+ :wq!  ( Save & Quit )
+
+# --> For Changeing The Hostname
+[root@client ~]# hostname MaterDNS.example.com
+
+[root@client ~]# hostname 
+MaterDNS.example.com
+
+*	NOW LOG OFF & LOG IN	*
+
+
+Step 2 :
+
+****** -->  CHECK THE PACKAGES AVALIBILITY.
+
+[root@MaterDNS ~]# rpm     -qa    |      egrep     -i       "bind|caching"
+
+		( OR)
+
+[root@MaterDNS ~]# yum list installed     |       egrep    -i       "bind|caching"
+
+# --> For Removeing The Existing Packages & Database of Existing DNS Server.
+
+[root@MaterDNS ~]# yum     remove     bind*     caching* -y
+
+[root@MaterDNS ~]# rm  -r   /etc/named*
+
+[root@MaterDNS ~]# rm  -rf  /var/named*
+
+#  -->   For Install the packages
+
+[root@MaterDNS ~]# yum  install bind*  cach* -y
+
+
+Step 3
+
+#  -->  Edit the First DNS  Main Configuration  File
+
+[root@MaterDNS ~]# vi  /etc/named.conf  
+
+listen-on port 53 { 127.0.0.1; 192.168.0.1; };	
+allow-query     { localhost; any  ; };		
+match-clients   { localhost; any ; };		
+
+:wq!
+
+# --->  Edit The Second Main Configuration File 
+
+[root@MaterDNS ~]# vi  /etc/named.rfc1912.zones 
+
+#Copy the sample script forward/reverse zone by pressing 12yy & paste press p
+ 
+	zone "localhost" IN {			## 12yy
+	type master;
+	file "named.localhost";
+	allow-update { none; };
+	};
+
+	zone "0.0.127.in-addr.arpa" IN {
+	type master;
+	file "named.loopback";
+	allow-update { none; };
+	};					
+
+##press 'p'  to paste the copied line's.
+	
+	zone "example.com" IN {
+	type master;
+	file "example.for";
+	allow-update { 192.168.0.2; }; ## Slaves IP
+	};
+
+	zone "0.168.192.in-addr.arpa" IN {
+	type master;
+	file "example.rev";
+	allow-update { 192.168.0.2; };        	## Slaves IP
+	};
+	
+	:wq!  ( Save & Quit )
+
+
+Step  4
+
+#   --->  Create FORWARD ZONE & REVERSE ZONE
+
+[root@MaterDNS ~]# cd /var/named
+[root@MaterDNS named]# ls
+[root@MaterDNS named]# cp -p  named.localhost  example.for
+[root@MaterDNS named]# cp -p  named.loopback     example.rev
+[root@MaterDNS named]# ll
+
+
+
+#  -->  EDIT THE FORWARD ZONE FILE
+
+[root@MaterDNS named]# vi example.for 
+
+$TTL    86400
+@               IN SOA  MaterDNS.example.com.    rname.invalid. (
+                                        42              ; serial 
+                                        3H              ; refresh
+                                        15M             ; retry
+                                        1W              ; expiry
+                                        1D )            ; minimum
+
+                IN NS           MaterDNS.example.com.
+                IN NS           SlaveDNS.example.com.
+
+MaterDNS       IN A            192.168.0.1
+slave          IN A            192.168.0.2
+
+nfs            IN A            192.168.0.10
+ftp            IN A            192.168.0.11
+smb            IN A            192.168.0.12
+
+mail	 	IN A		192.168.0.15
+example.com	IN MX 4		mail
+
+web		IN A		192.168.0.20
+www		IN CNAME	web
+	
+sales1       	 IN A             192.168.0.21
+mark1          	 IN A             192.168.0.22
+adm1 		 IN A             192.168.0.23
+
+:wq!   ( Save & Quit )
+
+[root@MaterDNS named]# 
+
+
+#  --->   EDIT THE REVERESE ZONE FILE
+
+[root@MaterDNS named]# vi example.rev
+$TTL    86400
+@       IN      SOA     MaterDNS.example.com. root.example.com.  (
+                                      1997022700 ; Serial
+                                      28800      ; Refresh
+                                      14400      ; Retry
+                                      3600000    ; Expire
+                                      86400 )    ; Minimum
+
+        IN      NS      MaterDNS.example.com.
+        IN      NS      SlaveDNS.example.com.
+
+1       IN      PTR     MaterDNS.example.com.
+2       IN      PTR     SlaveDNS.example.com.
+
+
+10      IN      PTR     nfs.example.com.
+11      IN      PTR     ftp.example.com.
+12      IN      PTR     smb.example.com.
+15      IN      PTR     mail.example.com.
+20      IN      PTR     web.example.com.
+
+
+21      IN      PTR     sales1.example.com.
+22      IN      PTR     mark1.example.com.
+23      IN      PTR     adm1.example.com.
+
+:wq!
+
+[root@MaterDNS named]# 
+
+Step 5 
+
+#   ----->   For Check (OR) Debbugging  Syntax errors of Configuration file & Zone file
+
+
+[root@localhost ~]# named-checkconf  /etc/named.caching-nameserver.conf 
+[root@localhost ~]# named-checkconf  /etc/named.rfc1912.zones 
+
+# ---> To check ZONE file syntax errors
+
+[root@localhost ~]# named-checkzone       example.com     /var/named/example.for
+[root@localhost ~]# named-checkzone       example.com      /var/named/example.rev
+
+Step 6 
+
+	*******  RESTART THE SERVICES ********
+
+[root@MaterDNS named]# service named restart 
+
+
+Step 7 
+
+#    ---> Client Side COnfiguration 
+	**** Provide the IP OF Master DNS
+
+	[root@MaterDNS named]# vi /etc/resolv.conf 
+	nameserver 192.168.0.1
+			
+	:wq!  ( Save & Quit )
+
+#  --->  Check the resolution
+
+[root@Client ~] #  dig  MaterDNS.example.com
+[root@Client ~] #  dig  SlaveDNS.example.com
+[root@Client ~] #  nslookup  nfs.example.com
+[root@Client ~] #  host     sales1.example.com
+[root@Client ~] #  dig  -x 192.168.0.1
+[root@Client ~] #  dig  -x 192.168.0.2
+[root@Client ~] #  dig  -x 192.168.0.3
+
+
+
+
+

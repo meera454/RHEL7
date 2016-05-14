@@ -1,0 +1,365 @@
+                              PXE SERVER CONFIGURATION:
+                             ===========================
+
+Objectives:-
+
+1) Introduction of Pre boot Execution Environment (PXE)
+
+2) Work function and configuration steps
+
+
+INTODUCTION
+
+The Preboot eXecution Environment (PXE, also known as Pre-Execution Environment; sometimes pronounced pixie) is an environment to boot computers using a network interface independently of data storage devices (like hard disks) or installed operating systems.
+
+
+PXE was introduced as part of the Wired for Management framework by Intel and is described in the specification (version 2.1) published by Intel and Systemsoft on September 20, 1999. It makes use of several network protocols like Internet Protocol (IP), User Datagram Protocol (UDP), Dynamic Host Configuration Protocol (DHCP) and Trivial File Transfer Protocol (TFTP) and of concepts like Globally Unique Identifier (GUID), Universally Unique Identifier (UUID) and Universal Network Device Interface and extends the firmware of the PXE client (the computer to be bootstrapped via PXE) with a set of predefined Application Programming Interfaces (APIs).
+
+
+This document will help you to setup a PXE boot server for Linux (RHEL6) .
+
+
+
+
+Scenario:
+=========
+
+Need to setup your own mini-network that is completely disconnected from the network, since part of this process requires setting up a DHCP server which could conflict with the corporate DHCP server if they were both running on the same network simultaneously, and setup information
+
+
+Network Setup :--
+--------------
+
+
+Network: 192.168.0.0/24
+
+Server Address: 192.168.0.100
+
+Domain-name: example.com
+
+Domain-name-server: master.example.com.
+
+Clients ip: 192.168.0.1 -to- 192.168.0.99
+Hostnames for Client: workstation{1-99}.example.com 
+
+
+Features:--
+--------
+RHEL6 Remote Deployment
+
+Requirements :--
+
+    1.vsftpd
+
+    2.yum  used to share the package repository
+
+    3.nfs  used to share the RHEL directory.
+
+    4.dhcpd  used for network boot.
+
+    5.Syslinux
+
+    6. tftp-server  uses client and server to make connections between two devices. From a TFTP client, individual files can be downloaded from the server.
+
+7. kickstart file  For Automated OS installation
+
+8. dns
+
+Tasks to perform:
+1. Install the requirements
+
+2. Create kickstart file
+
+3. Configure yum
+4. Configure dhcpd
+5. Configure syslinux
+6. Configure tftp-server
+
+7. Configure dns
+
+
+
+NOTE: MAKE SURE THERE IS NO OTHER DHCP SERVER IS RUNNING
+--------------------------------------------------------
+
+#setup      
+------------------------------------------------------------
+   ip              - 192.168.0.100 
+   netmask         - 255.255.255.0
+   default gateway - 192.168.0.254
+   primary dns     - 192.168.0.100     (yours)
+
+    DNS configuration
+      hostname         master.example.com 
+      DNS              192.168.0.100
+      dns search path  example.com
+--------------------------------------------------------------
+
+#service network restart
+#chkconfig network on
+
+#ping 192.168.0.100
+
+mount iso image on /mnt/rhel6
+------------------------------
+
+#mount -o loop /root/Downloads/rhel6-x86_64.iso  /mnt/rhel6
+ 
+if you have DVD 
+--------------
+
+#mount  /dev/cdrom  /mnt/rhel6     (or)   mount  /dev/sr0   /mnt/rhel6  --> both works
+
+CONFIGURE LOCAL YUM:
+====================
+#mv  /etc/yum.repos.d/*   /tmp
+
+#vim  /etc/yum.repos.d/rhel6.repo
+--------------------------------------------------
+[rhel6]
+name=file:///mnt/rhel6
+enabled=1
+gpgcheck=0
+:wq
+---------------------------------------------------
+
+#verify yum is working or not
+-----------------------------
+#yum clean all
+#yum list all
+
+Getting packages ready, by copying contents of dvd to /var/ftp/pub/rhel6  and sharing them through ftp/http.
+
+#yum install http*  vsftp*  -y
+
+#mkdir -p /var/ftp/pub/rhel6
+
+#cp -rvfp  /mnt/rhel6/*   /var/ftp/pub
+
+#ln -s  /var/ftp/pub  /var/www/html/pub
+
+#service httpd restart  ; chkconfig httpd on
+
+
+ =>Now you need to setup the DHCP server. All you need to do is create /etc/dhcpd.conf with the following contents:
+
+
+#yum install dhcp*
+
+# vim /etc/dhcp/dhcpd.conf
+-------------------------------------------------------------------------------------
+
+subnet 192.168.0.0 netmask 255.255.255.0 {
+
+range 192.168.0.1 192.168.0.99;
+
+option domain-name-servers 192.168.1.100;
+
+option domain-name "example.com";
+
+option routers 192.168.0.100;
+
+option broadcast-address 192.168.0.255;
+
+default-lease-time 600;
+
+max-lease-time 7200;
+}
+
+
+host master {
+
+hardware ethernet 00:0C:29:79:3F:F8; ## this is you HW/MAC address
+
+fixed-address 192.168.0.100;
+}
+
+option space PXE;
+
+class "PXE" {
+
+match if substring(option vendor-class-identifier, 0, 9) = "PXEClient";
+
+option vendor-encapsulated-options 01:04:00:00:00:00:ff;
+
+option boot-size 0x1;
+
+filename "pxelinux.0";
+
+option tftp-server-name "master.example.com";
+
+option vendor-class-identifier "PXEClient";
+
+vendor-option-space PXE;
+}
+
+
+:wq!
+---------------------------------------------------------------------------------------
+
+#service dhcpd restart
+
+#chkconfig dhcpd on
+ 
+Now Configure DNS for example.com domain.
+========================================
+
+
+# yum install bind* -y                
+
+   =>this is in rhel6  if you are configurating dns in rhel5   install caching-nameserver*
+
+
+Open named.conf file and modify these lines
+
+
+# vim /etc/named.conf
+
+---------------------------------------------------
+listen-on port 53 { 192.168.0.100; };        ## line no: 11
+
+allow-query { 192.168.0.0/24 ; };            ## line no: 1
+
+:wq!
+
+------------------------------------------------------
+
+# vim /etc/named.rfc1912.zones
+
+--------------------------------------------------------
+
+
+###############line numbers 13-->17################
+
+zone "example.com" IN {      
+
+                     type master;
+
+                     file "example.forward";
+
+                     allow-update { none; };
+
+                      };
+
+##########line numbers  31-->35###################
+
+zone "0.168.192.in-addr.arpa" IN {
+
+                              type master;
+
+                              file "example.reverse";
+
+                              allow-update { none; };
+
+                               };
+
+:wq!
+-------------------------------------------------------------
+
+
+# vim /var/named/example.forward
+
+--------------------------------------------------------
+$TTL 1D 
+@ IN SOA master.example.com. root.master.example.com. (
+
+                                   0 ; serial
+
+                                  1D ; refresh
+
+                                  1H ; retry
+
+                                  1W ; expire
+
+                                 3H ) ; minimum
+ 
+        NS master.example.com.
+
+master  IN A 192.168.0.100
+
+www     IN CNAME master.example.com.
+
+$GENERATE 1-99 workstation$ A 192.168.0.$
+
+:wq!
+--------------------------------------------------------------
+
+# vim /var/named/example.reverse
+--------------------------------------------------------------
+$TTL 1D
+
+@ IN SOA master.example.com. root.example.com. (
+
+                             0 ; serial
+
+                            1D ; refresh
+
+                            1H ; retry
+
+                            1W ; expire
+                            3H ) ; minimum
+           NS master.example.com.
+
+100        IN PTR master.example.com.
+$GENERATE 1-99 $ PTR workstation$.example.com.
+
+:wq!
+---------------------------------------------------------------
+
+# service named restart ; chkconfig named on
+# service dhcpd restart ; chkconfig dhcpd on
+
+
+# yum -y install syslinux* tftp-server*
+
+# service xinetd restart
+# chkconfig xinetd on
+# chkconfig tftp on
+
+# ls /var/ftp/pub/isolinux/
+
+# cp -p /var/ftp/pub/isolinux/* /var/lib/tftpboot/
+
+#ls -l  /var/lib/tftpboot
+
+# cp /usr/share/syslinux/pxelinux.0 /var/lib/tftpboot/
+# chmod -R u+w /var/lib/tftpboot/
+
+###bydefault there will be no permissions on this so we are giving rw permissions#############3
+
+#ls -l /var/lib/tftpboot
+# mkdir /var/lib/tftpboot/pxelinux.cfg
+# cp /var/lib/tftpboot/isolinux.cfg /var/lib/tftpboot/pxelinux.cfg/default
+
+
+#######provides bootable image from isolinux directory###########
+
+# service xinetd restart
+# service dhcpd restart
+
+#chkconfig tftp on
+
+
+
+Now create kickstart file and copy it to /var/ftp/pub
+
+
+#cp    kick.cfg    /var/ftp/pub
+
+#vim /var/lib/tftpboot/pxelinux.cfg/default 
+--------------------------------------------------------------------
+Label Basic
+menu label install ^WELCOME TO PXE SERVER INSTALLTION
+Kernel vmlinuz 
+appen initrd=initrd.img  ks=http://192.168.0.100/pub/kick.cfg
+---------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+

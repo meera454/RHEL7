@@ -1,0 +1,295 @@
+		====================================================================
+			******* Logical Volume Management *********	
+		=====================================================================
+
+	1.) Previously you worked with physical storage. 
+	    you learned how to create partitions and use them for file systm.
+	    you will get more pratice with some of the skill you learned in that unit.
+	    but you will use the partitions you crate for a more flexible disk management schema called LVM.
+		(Logical Volume Management)
+
+	NOTE:- When you complete this unit you will be able to Perform A Task as follows:-
+
+	A.) Imlplement LVM storage which is much more flexible then traditional partitions
+	B.) Extend logical volume and their file systems to provide additional space.
+	C.) All About LVM in Short is to Have Dynamic File System to Achive resizeing Feature Online Basis.
+
+	
+	*** Before you can administer LVM there are some basic Key Term's will need to be Aware of.
+  
+   	1.) Logical volume (LV)
+     	2.) Volume group   (VG)
+   	3.) Physical volumes (PV)
+
+        * Physical storage (Disk utility)
+	* Physical storage (type 0x8e)
+
+	* Physical volume (pv) = disk or partition marked as usable space for lvm
+	* Volume Group (vg) = Collection of pv's , can think of it as virtual disk drive
+	* logical volume (lv) = A piece of a vg , can consider it to be a virtual partition   
+
+	Key points:
+	============
+
+ * Physical Partitions or Disks are the first builiding block of lvm. These
+   could be partitions, whole disks .
+ 
+ * physical volumes are the underlying "physical" storage used with lvm .
+   this is typically a block device such as a partition or whole disk. A
+   device must be initialized as an LVM physical Volume in order to be used 
+   with lvm.
+ 
+ * volume groups are storage pools made up of one or more physical volumes.
+
+ * Physical Extents are small chunks of date stored on physical volumes that
+   act as as the  back end of LVM storage .
+
+ * Logical Extents map to physical Extents to make up the front end of lvm
+   storage . By default each logical extents will map to one physical Extent.
+
+ * Logical volume are groups of logical extents. A logical volume may be
+   used in the same manner as a hard drive partition.   
+
+
+	  Keypoint
+	  =========
+
+  * fdisk is used to create a new partition for use with LVM. Always set the type to "8e linux lvm" on a partition to be used with lvm.
+  
+  * Pvcreate is the command used to initialize a partition for use with Lvm as a physical volume.
+ 
+  * vgcreate is used to create a volume group. this is a pool of space on one or more physical volume that can be allocated to one or more logical volumes.
+
+ * A logical volume may be extended up to the total available extents in the volume group.
+ 
+ * Lvextend extends the logical volume without unmounting it. this allows the associated filesystem to remain in use during the oprations.
+ 
+ * resize2fs extends the ext4 filesystem without unmounting it. this allows it to remain in use during the opration. new space becomes available once resize2fs is finished.
+
+  
+   ****** There are many commands and management utilities for working with LVM. Here is an overview of them:
+	
+	     **** For Checking The Property's Of Respective Volume's
+	     ======================================================
+
+   * pvs Displays physical volumes
+   * vgs Displays volume groups
+   * lvs Displays logical volumes
+
+   * pvdisplay Displays detailed information on physical volumes
+   * vgdisplay Displays detailed information on volume groups
+   * lvdisplay Displays detailed information on logical volumes
+   
+	     *** For Creating The Respective Volume's
+	     ========================================
+
+   * pvcreate Creates a new physical volume
+   * vgcreate Creates a new volume group
+   * lvcreate Creates a new logical volume
+   
+	     *** For Extending (OR) Resizeing The Respective Volume's
+	     ========================================================
+
+   * vgextend Extends an existing volume group
+   * vgreduce Reduces a volume group
+   * lvresize Resizes a logical volume
+   * lvextend Extends a logical volume
+   * lvreduce Reduces a logical volume
+   
+	     *** For Removeing The Respective Volume's
+	     ========================================
+  	 
+   * pvremove Removes a physical volume
+   * vgremove Removes a volume group
+   * lvremove Removes a logical volum
+
+  
+	================
+	** STEP NO 1 **
+	================
+  	
+	---> Install the required packages:
+
+            # yum install -y lvm2
+  
+  	---> Verify that it is installed:
+
+            # rpm -qa | grep lvm
+            lvm2-libs-2.02.72-8.el6.x86_64
+            lvm2-2.02.72-8.el6.x86_64
+
+This package is usually installed by default, but verify that it is. Without
+this package, you are unable to use LVM on your system. Let’s go
+through the model again, but this time make use of the management
+commands. First, let’s look at the physical volumes.
+
+
+	================
+	** STEP NO 2 **
+	================
+  	
+ 	-->  To Create a Partition 
+	#  fdisk   -uc  /dev/vdb
+	Command (m for help): n
+	Partition type:
+	   p   primary (2 primary, 0 extended, 2 free)
+	   e   extended
+	Select (default p): p
+	Partition number (1,4, default 3 ): 3
+	First sector (488396800-488397167, default 488396800): 
+	Last sector, +sectors or +size{K,M,G} (488396800-488397167, default 488397167): +10G
+	Partition 3 of type Linux and of size 184 KiB is set
+
+	Command (m for help): t
+	Partition number (1-3, default 3): 3
+	Hex code (type L to list all codes): 8e
+	Changed type of partition 'Linux' to 'Linux LVM'
+	Command (m for help): w
+
+	---> For Updateing The Partition Table	
+	#  partprobe  
+	
+	**** For  Provideing The LVM Support To The Real Block Device
+  	#  pvcreate  /dev/vdb3
+
+	**** For Checking The Property's Of Physical Volume
+	#  pvdisplay  
+		(OR)
+	# pvs
+
+
+   Note:- In RHEL5, the default name for volume groups and logical volumes was VolGroup or LogVol. 
+	  In RHEL6, the new naming convention uses the “vg_” or “lv_” prefix and then the hostname of the system.
+	  In RHEL7  the  new nameing convention  used is rhel for volume group 
+
+	================
+	** STEP NO 3 **
+	================
+	
+	 **** For Createing a Volume Group
+	 # vcreate  vg_server0  /dev/vdb3 
+
+	 **** For Createing a Volume Group with Specific Extent size
+	 # vcreate -s  32M  vg_server0  /dev/vdb3 
+
+         *** To view information about the volume group, use the vgs command:
+	 # vgs
+		(OR)
+         # vgdisplay
+
+	================
+	** STEP NO 4 **
+	================
+
+ 	*** For Createing a Logical Volume With Specific Size{KB, MB, GB}
+        # lvcreate  -L   320M   -n  /dev/vg_server0/lv_server0
+
+ 	*** For Createing a Logical Volume With Specific Number of Extent's
+        # lvcreate  -l 5   -n  /dev/vg_server0/lv_server0
+
+	*** For Formatting The  Logical  Volume with  Ext4
+	# mkfs.ext4    /dev/vg_server0/lv_server0
+
+	*** For Formatting The  Logical  Volume with Xfs
+	# mkfs.xfs    /dev/vg_server0/lv_server0
+
+	*** For Mounting The Logical Volume
+	# mkdir  /data
+	# mount   /dev/vg_server0/lv_server0   /data
+
+	*** For Adding The Entry into /etc/fstab File
+	#  vim  /etc/fstab
+	/dev/vg_server0/lv_server0   /data   xfs   defaults  0 0
+	:wq!	( Save & Quit )
+
+	*** To get more detailed information about the logical volumes. 
+       # lvdisplay
+	(OR)
+       # lvs
+
+
+Note :- 
+1.)You can also look in the /etc/lvm directory, which contains all the information about each layer of the LVM structure.
+2.)LVM has two such units: physical extents and logical extents. 
+   Physical extents are used when dealing with volume groups, and logical extents, with logical volumes. 
+   The logical extents always map back to a physical extent.
+
+
+	================
+	** STEP NO 5 **
+	================
+
+	**** To Extend a Logical Volume, use the lvresize command.
+	--> For Resizeing  A Logical Volume  In Size
+	#  lvresize    -L  +128M    -n   /dev/vg_server0/lv_server0
+
+	*** For Resizeing  A Logical Volume  In Extents
+	#  lvresize    -l    +2    -n   /dev/vg_server0/lv_server0
+
+	**** To Extend a Logical Volume, use the lvresize command.
+	--> For Resizeing  A Logical Volume  In Size
+        # lvextend -L  +256M  /dev/vg_server0/lv_server0
+
+	*** For Resizeing  A Logical Volume  In Extents
+       # lvextend -l +5  /dev/vg_server0/lv_server0
+
+Note:- 
+1.) Suppose, though, that you want to add a new physical volume so that you can extend your volume group (possibly to add a new partition). 
+2.) You can use vgextend to expand your volume group.
+
+	================
+	** STEP NO 6 **
+	================
+
+   *** For Updateing The Changes Done A Volume Level To File System{ExtX}
+	#  resize2fs   -f    /dev/vg_server0/lv_server0
+	#  df  -h   |  grep  /dev/vg_server0/lv_server0
+
+   *** For Updateing The Changes Done A Volume Level To File System{XFS}
+	#  xfs_growfs    /dev/vg_server0/lv_server0
+	#  df  -h   |  grep  /dev/vg_server0/lv_server0
+
+	================
+	** STEP NO 7 **
+	================
+	*****  Extended Volume group 
+  	-----------------------------
+	
+     *** Create a new physical volume somewhere
+    # pvcreate /dev/hdc
+    
+     *** For Extending The Volume Group
+    # vgextend  vg_server0 /dev/hdc
+    Added  “/dev/hdc” from volume group "vg_server0"
+
+     *** For Reduceing The Volume Group
+    # vgreduce vg_server0 /dev/hdc
+    Removed “/dev/hdc” from volume group "vg_server0"
+
+     **** For Checking The Volume Group Preperty's
+     # vgs
+ 	(OR)
+     # vgdisplay
+
+	================
+	** STEP NO 8 **
+	================
+
+
+	*** For Removeing a Logical Volume
+	#  lvremove   /dev/vg_server0/lv_server0
+	
+	*** For Removeing A Volume Group
+	#  vgremove   vg_server0
+
+	*** For Removeing A Physical Volume
+	#  pvremove   /dev/hdc
+      
+	================
+	** STEP NO 8 **
+	================
+
+	
+	*** For  Createing A SnapShot Of Active Logical Volume
+	#  lvcreate    -s   -L 128M    /dev/vg_server0/lv_server0     -n  Lv_server0-snap
+	

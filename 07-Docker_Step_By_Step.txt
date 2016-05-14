@@ -1,0 +1,59 @@
+
+    Smaller than VMs: Because Docker images contain only the content needed to run an application, saving and sharing is much more efficient with Docker containers than it is with virtual machines (which include entire operating systems)
+
+    Improved performance: Likewise, since you are not running an entirely separate operating system, a container will typically run faster than an application that carries with it the overhead of a whole new virtual machine.
+
+    Secure: Because a Docker container typically has its own network interfaces, file system, and memory, the application running in that container can be isolated and secured from other activities on a host computer.
+
+    Flexible: With an application's run time requirements included with the application in the container, a Docker container is capable of being run in multiple environments.
+
+
+Namespaces
+The kernel provides process isolation by creating separate namespaces for containers. Namespaces allow you to create an abstraction of a particular global system resource and make it appear as a separated instance to processes within a namespace.
+
+
+Control Groups (cgroups)
+The kernel uses cgroups to group processes for the purpose of system resource management. Cgroups let you allocate CPU time, system memory, network bandwidth, or combinations of these among user-defined groups of tasks.
+
+SELinux
+SELinux provides secure separation of containers by applying SELinux policy and labels. It integrates with virtual devices by using the sVirt technology
+
+Getting Docker in RHEL 7:-
+
+# subscription-manager register --username=rhnuser --password=rhnpasswd
+# subscription-manager list --available " Find pool ID for RHEL subscription"
+# subscription-manager attach --pool=pool_id
+# subscription-manager repos --enable=rhel-7-server-extras-rpms
+# subscription-manager repos --enable=rhel-7-server-optional-rpms
+
+Install docker and docker-registry:-
+#yum install docker docker-registry
+
+Docker registries:-
+
+A Docker registry provides a place to store and share docker containers that are saved as images that can be shared with other people on our team. With the docker package available with RHEL.
+
+# firewall-cmd --zone=public --add-port=5000/tcp
+ # firewall-cmd --zone=public --add-port=5000/tcp --permanent
+ # firewall-cmd --zone=public --list-ports
+ 5000/tcp
+
+or iptable 
+iptables -A INPUT -m state --state NEW -m tcp -p tcp --dport 5000 -j ACCEPT
+
+Turn off firewalld:-
+# systemctl stop firewalld.service
+# systemctl disable firewalld.service
+
+because Docker will add its own iptables firewall rules, without using the firewalld service. 
+
+
+
+Start docker:
+
+# systemctl start docker.service
+
+Enable docker:
+
+# systemctl enable docker.service
+

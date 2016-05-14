@@ -1,0 +1,119 @@
+			===========================================================
+				******* Backup & Restoration ****
+			============================================================
+
+	1.)	Backup is the mechanism to maitaining Indentical Copy (OR) Duplicate Copy of the required Data.
+	2.)	Backup is basically used for preventing Loss of data.
+	3.)     Backup Can Be Done BAsically at three diffrent Level's
+
+		A.)	Standalone Method
+			--> Under This Method both Original & Duplicate Copy of Data is Stored on Same Disk.
+			--> We have possibility of Lossing the Data on Hardware Failure
+
+		B.)	Network Method
+			--> Under This  Method data Will be Backed Up onto a Network PC (or) Remote Machine.
+			--> We need to have user credentials of Remote Machine for Access { Authentication }.
+			
+		C.)	External Method
+			--> Under This Method Data will copied or burned onto Externally connected Storage Device.
+			--> We Can Also take the Backup of the Data stored  in a file System Completely.
+	
+			=================================
+			***** A.)  Stanalone  Backup *****
+			==================================
+	
+	1.)	Archiving files generally a good idea if you want to back up a few directories or transfer many files over a network.
+	2.)  	Archving is the combining of one or more files into a single archive file.
+	3.)	compression decrease the size of a file.
+	4.)	Easier to backup , store and transfer.
+	5.)	tar - standard linux archiving command.
+	
+	
+	*** For create  Backup Copy With Tar Command.
+	#  tar -cvf  /opt/etc.tar     /etc
+
+	*** For List The Content Of a Backup File
+	# tar -tvf    /opt/etc.tar
+
+	*** For Restoreing (or) Extract the Content From Backup File
+ 	# tar -xvf  /opt/etc.tar
+
+	*** For Takeing Backup With Tar With copressing The Size Of Backup File
+	 # tar   -cvzf    /opt/etc.tar.gz     /etc
+
+	*** For Adding (or) Updateing  the New  File For Existing Backup File.
+	 # tar -uvf etc.tar anaconda.cfg
+
+	*** For Deleting the File Inside  Tarball File.
+ 	#  tar -tf etc.tar | grep anaconda.cfg
+	 # tar --delete -f etc.tar anaconda.cfg
+
+	***  If You Want To Extract Particular File
+ 	# tar   -x   /etc/shadow    -f    /opt/etc.tar.gz
+
+	*** For Extract the Backup Into A  particular location
+	 # tar  -xvf /opt/etc.tar   -C     /root/Download
+
+
+			============================================
+			***** B.)  Network (or) Remote Backup *****
+			============================================
+
+	1.)	Copying The Data From One Machine To Another Networked (OR) Remote Machine.
+	2.) 	We Can Retrive The Data Even On Hardware Failure (OR) Machine Crashs Down.
+	3.)	We Need User Authentication [User Password] For Network Backup.
+	4.)	scp  & rsync  - standard  tool for copying on network
+	
+	****	For Copying The Data on Remote Network Machine
+	# scp  -r  /opt/etc.tar.gz	desktop1.example.com:/root
+
+	****	For Restoreing  The Data From Remote Network Machine
+	# scp  -r  desktop1.example.com:/root/etc.tar.gz  /mnt
+
+
+			==================================
+			***** C.)  External Bacup *******
+			==================================
+
+	1.)	For Copying (or) Moveing Data from one disk to external disk.
+	2.)	We can Retrive the Data On hardware failure (or) Disk Corruption.
+
+		*** For Takeing External Backup for Extended Verion File System [ext2, ext3 & ext4].
+		====================================================================================
+
+		**** The Command For Takeing Full Backup of Extended File System.
+		#  dump   -0uf    /mnt/full-backup-etc.dump     /etc
+
+		**** The Command For Takeing Incremental Backup of Extended File System.
+		#  dump   -1uf    /mnt/1-Incr-backup-etc.dump     /etc
+
+		**** For Restoreing The Content From Full Backup.
+		#  restore   -rf    /mnt/full-backup-etc.dump
+
+		**** For Restoreing The Content From Incremental Backup.
+		#  restore   -rf    /mnt/1-Inc-backup-etc.dump
+
+		*** For Takeing External Backup for XFS File System.
+		====================================================================================
+		
+
+		**** The Command For Takeing Full Backup of XFS File System.
+		#  xfsdump   -l 0 -f  /mnt/full_XFS_Backup    /data
+		========= Media Label Dialog =======================
+		please enter label for media in drive 0
+		->  1
+		media label entered: 1
+
+		**** The Command For Takeing First Incremental Backup of XFS File System.
+		#  xfsdump   -l 1 -f  /mnt/first_Incr_XFS_Backup    /data
+		========= Media Label Dialog =======================
+		please enter label for media in drive 0
+		->  2
+		media label entered: 2
+		
+			
+		**** For Restoreing The Content From Full Backup.
+		#  xfsrestore   -f    /mnt/full_XFS_Backup   /opt
+
+		**** For Restoreing The Content From Incremental Backup.
+		#  xfsrestore   -f    /mnt/first_Incr_XFS_Backup  /opt

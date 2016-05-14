@@ -1,0 +1,185 @@
+####		   ---> Domain Nameing System (DNS Server)
+#### 		   ****** SLAVE DNS Server.
+
+	--> 1.) Domain Nameing System is used for resolveing , Mapping (or) Converting Human Friendly names to computer friendly  IP Address.
+
+	--> 2.) This Resolution is done in two diffrent order.
+		A.)	Name to IP Address  { Forward lookup zone (OR)  FLZ}  .
+		B.)	IP Address to  Name { Reverse Lookup Zone (OR) RLZ}.
+
+	**** DNS Server can be configured in three different mode's.
+		A.)	Master DNS  (or) Authoritative  DNS Server.
+		B.)	Slave DNS (or)  Non Authoritative DNS Server.
+		C.)	Forwarder's (or) Caching DNS Server.
+
+********* Requirements Of DNS Server ***********
+
+	A.)	Package's
+		bind*
+	
+	B.)	Service (OR) Deamon
+		named
+
+	C.)	Port Number
+		53
+	
+	D.)	Configuration File Of DNS Server
+		/etc/named.rfc1912.zones
+		/etc/named.conf
+	
+		Zone Database Directory
+		---> /var/named/slaves
+			A.)	named.localhost { FLZ}
+			B.)	named.loopback {RLZ}
+
+	E.)	Debbugging Tool
+
+		named.checkconf  [ For Configuration FIle's].
+		named.checkzone [ For Zone Database File's].
+			
+	-->  STEP FOR MASTER DNS SERVER
+	
+	*** Configuration of Master DNS Server
+	
+	**** Current DNS Master IP is 192.168.0.1
+
+	**** Current DNS Slave  IP is 192.168.0.2
+
+
+
+********   --> CONFIGURATION OF SLAVE DNS Server   **********
+
+                               
+Step 1
+
+#  --->  For  Checking The IP Address  & Changeing it  on Slave DNS Server.
+
+[root@slavedns ~]# ifconfig 
+[root@slavedns ~]# setup
+
+# ---> For Enableing The Service (OR) Deamon
+[root@slavedns ~]# chkconfig network on
+[root@slavedns ~]# service network restart
+
+# ---> For Changeing The Hostname Of Slave  DNS Server
+
+[root@slavedns ~]# hostname SlaveDNS.example.com
+[root@slavedns ~]# hostname 
+SlaveDNS.example.com
+
+[root@slavedns ~]# vi /etc/sysconfig/network
+NETWORKING=yes
+HOSTNAME=SlaveDNS.example.com
+:wq! ( Save & Quit )
+
+# ---> Fot The Editing The Host file for Local System Resolution
+[root@slavedns ~]# vi /etc/hosts
+127.0.0.1       localhost.localdomain   localhost
+192.168.0.2     SlaveDNS.example.com      SlaveDNS
+:wq!  ( Save &  Quit)
+
+*	NOW LOG OFF & LOG IN	*
+
+Step 2 
+
+#  -->  For Checking The Avalibility Of  Bind PACKAGES.
+
+[root@SlaveDNS ~]# rpm      -qa     |       egrep    -i       "bind|caching"
+		(OR)
+[root@SlaveDNS ~]# yum     list      installed    |     egrep    -i    "bind|caching"
+
+#  --> For  Removeing the Existing Bind Packages  & Database Of DNS Server.
+[root@SlaveDNS ~]# yum remove bind*  caching*
+
+[root@SlaveDNS ~]# rm /etc/named*
+[root@SlaveDNS ~]# rm -rf /var/named*
+
+#   --->    Now Install the packages
+
+[root@SlaveDNS ~]# yum  install bind*  cach*  -y
+
+#  ---> Enable The Service  Of DNS Server
+ 
+[root@slavedns ~]# chkconfig named on 
+[root@slavedns ~]# service  named  restart 
+
+
+Step 3
+
+# ******  Edit  The First Main Configuration File  of Dns Server  *******
+
+[root@SlaveDNS ~]# vi  /etc/named.conf  
+
+listen-on port 53 { 127.0.0.1; 192.168.0.2; };   
+allow-query       { localhost;  any ; };   
+match-slavednss     { localhost; any; };   
+:wq!
+
+#   ***** Edit  Second  MainConfiguration File of Dns Server *******
+
+[root@SlaveDNS ~]# vi  /etc/named.rfc1912.zones 
+
+	zone "example.com" IN {
+	        type slave;
+	        file "slaves/example-slave.for";
+	        masters { 192.168.0.1; };	## Master DNS IP
+	};
+
+	zone "0.168.192.in-addr.arpa" IN {
+	        type slave;
+	        file "slaves/example-slave.rev";
+	        masters { 192.168.0.1; };	## Master DNS IP
+	};
+
+	:wq!  ( Save & Quit )
+
+[root@SlaveDNS ~]# cd       /var/named/slaves
+[root@SlaveDNS slaves]# ls
+
+*** Restart The DNS Server Service 
+
+[root@SlaveDNS slaves]# service named restart
+
+NOTE :-  After starting the service automatically the zone files will be replicated at the slave side from master.
+
+[root@SlaveDNS slaves]# ls
+example-slave.for       example-slave.rev
+
+STEP NO 4
+# ***  Provide The DNS Server Address in Slave DNS Server Side
+
+[root@SlaveDNS ~ ]#   vi    /etc/resolv.conf
+# Only  provide Slaves DNS IP
+nameserver  192.168.0.2
+:wq!	( Save & Quit )
+
+# *** For Checking The Nameing Resolution 
+
+[root@SlaveDNS ~ ]#  dig SlaveDNS.example.com
+[root@SlaveDNS ~ ]#  dig MaterDNS.example.com
+
+
+
+# ***  Provide The DNS Server Address in Client Side
+
+Provide the IP of DNS  in following file
+Note : /etc/resolv.conf supports maximun 3 DNS entries
+
+[root@client ~ ]#   vi /etc/resolv.conf
+nameserver  192.168.0.1
+nameserver  192.168.0.2
+
+:wq!  ( Save & Quit )
+
+[root@client ~ ]#  dig MaterDNS.example.com
+[root@client ~ ]#  dig SlaveDNS.example.com
+[root@client ~ ]# dig nfs.example.com
+[root@client ~ ]#  dig sales1.example.com
+
+[root@client ~ ]#  dig  -x 192.168.0.1
+[root@client ~ ]#  dig  -x 192.168.0.2
+[root@client ~ ]#  dig  -x 192.168.0.3
+
+[root@client ~ ]# ping MaterDNS.example.com
+[root@client ~ ]#  ping SlaveDNS.example.com
+

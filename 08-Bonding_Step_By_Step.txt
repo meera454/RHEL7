@@ -1,0 +1,392 @@
+                            Advanced Network Configuration
+                           ================================
+				** OBJECTVIES: **
+				=================
+
+1)Network Interface Configuration - IP Aliases
+2)Network Interface Configuration - Bonding
+3)Static Route Configuration
+
+
+
+Multiple IP Addresses on a Single NIC :
+=======================================
+Assigning multiple IP addresses to a single interface is called IP aliasing. This is useful for situation such as web hosting where a single machine may run different services or sites on different IP addresses.  DHCP dones not support aliases.
+
+The process for creating an IP alias is very similar to the steps outlined for the real interface in the previous section, "Changing Your IP Address":
+
+    * First ensure the parent real interface exists
+    * Verify that no other IP aliases with the same name exists with the name you plan to use. In this we want to create interface eth0:0.
+    * Make sure NetworkManager is stoped. 
+
+To create ipalias temporarly:
+============================
+[root@bigboy tmp]# ifconfig eth0:0 192.168.0.206 netmask 255.255.255.0 up 
+                         or
+                 #ip addr add 192.168.0.206/24 dev eth0 label eth0:0 
+
+#ifconfig eth0:0
+   or
+#ip addr show eth0:0
+
+    
+To create ipalias persistently:
+===============================
+#vim /etc/sysconfig/network-scripts/ifcfg-eth0:0
+----------------------------
+DEVICE=eth0:0
+ONBOOT=yes
+BOOTPROTO=static
+IPADDR=192.168.1.99
+NETMASK=255.255.255.0
+GATEWAY=192.168.0.254
+----------------------------
+
+The commands to activate and deactivate the alias interface would therefore be:
+------------------------------------------------------------------------------
+#ifdown eth0:0
+#ifup eth0:0
+
+#ifconfig eth0:0
+
+Note: Shutting down the main interface also shuts down all its aliases too. Aliases can be shutdown independently of other interfaces.
+
+After completing these four simple steps you should be able to ping the new IP alias from other servers on your network. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+
+Ethernet Channel Bonding – Atleast Two Interfaces bonded for Fail Over / High Availability / Load Balancing
+============================================================================================================
+
+ Red Hat Enterprise Linux allows administrators to bind multiple network interfaces together into a single channel using the bonding kernel module and a special network interface called a channel bonding interface. Channel bonding enables two or more network interfaces to act as  one. increasing bandwidth and/or providin redundancy, depepnding on the mode chosen.
+
+If one physical NIC is down or unplugged, it will automatically move resources to other NIC card. Channel/NIC bonding will work with the help of bonding driver in Kernel. 
+
+Bonding Modes:
+==============
+
+Mode 0 - Balance round-robin: Policy is to transmit packets in sequential order from the first available slave through the last.  Provides load balancing 
+
+Mode 1 – Active-Backup: Policy is that only one slave in the bond is active.  A different salve becomes active if, and only if, the active slave fails
+
+Mode 3 – Broadcast: Policy is to transmit everything on all slave interfaces.  Provides fault tolerance.
+
+
+=>On a machine where you are planning to configure bond0 , Make sure br0 is not working.
+
+#rm -rf /etc/sysconfig/network-scripts/ifcfg-br0
+
+
+#service NetworkManager stop
+#chkconfig NetworkManager off
+
+to make sure whether two nic's links are detected or not
+--------------------------------------------------------
+#mii-tool
+
+=>if not
+
+# init 6
+
+# go to BIOS  and make NIC  and PCI slotes enable
+
+then again  try mii-tool you can see both nic's links will be detected.
+
+
+#vim /etc/sysconfig/network-scripts/ifcfg-bond0 ==> Create new file
+-----------------------------------------------
+DEVICE=bond0
+IPADDR=192.168.0.206
+TYPE=Ethernet
+NETMASK=255.255.255.0
+ONBOOT=yes
+BOOTPROTO=none
+USERCTL=no
+MASTER=yes
+BONDING_OPTS=”mode=1 miimon=50”
+-------------------------------------------------
+
+You can change mode at any time and restart network service.  miimon is the milliseconds interval at which bond device checks if the active interface is up and running.  If the interface is not up, then it switches to the next available interface.  If this parameter is missing, then switching will not happen and the very purpose of bonding is lost.
+
+#vim /etc/sysconfig/network-scripts/ifcfg-eth0 
+-----------------------------------------------
+DEVICE=eth0
+BOOTPROTO=none ==> No DHCP
+ONBOOT=yes
+USERCTL=no     ==> Non-root users are not allowed to control this device.
+MASTER=bond0   ==> Bonding name
+SLAVE=yes      ==> eth0 works as slave
+------------------------------------------------
+
+#vim /etc/sysconfig/network-scripts/ifcfg-eth1 ==> Make sure the following entries exist
+----------------------------------------------
+DEVICE=eth1
+BOOTPROTO=none ==> No DHCP
+ONBOOT=yes
+USERCTL=no     ==> User cannot control network by bringing UP and DOWN
+MASTER=bond0   ==> Bonding name
+SLAVE=yes      ==> eth0 works as slave
+-----------------------------------------------
+
+So, bond0 is the master, and eth0 and eth1 interfaces are slaves.
+
+#vim /etc/modprobe.d/bond.conf    ==> Create new file
+-------------------------------
+alias bond0 bonding
+-------------------------------
+
+
+NOTE: For a channel bonding interface to be valid, the kernel module must be loaded. To ensure that the module is loaded when the channel bonding interface is brought up, create a new file as root named bonding.conf in the /etc/modprobe.d/ directory. Note that you can name this file anything you like as long as it ends with a .conf extension. Insert the following line in this new file:
+
+
+
+#service network restart
+
+#ifconfig bond0
+-------------------------------------------------------------------------
+bond0     Link encap:Ethernet  HWaddr 52:54:00:00:00:22  
+          inet addr:192.168.0.206  Bcast:192.168.0.255  Mask:255.255.255.0
+          inet6 addr: fe80::5054:ff:fe00:22/64 Scope:Link
+          UP BROADCAST RUNNING MASTER MULTICAST  MTU:1500  Metric:1
+          RX packets:5615 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:123 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0 
+          RX bytes:1098597 (1.0 MiB)  TX bytes:10702 (10.4 KiB)
+---------------------------------------------------------------------------
+
+#ifconfig -a
+-------------------------------------------------------------------------------
+[root@localhost ~]# ifconfig -a
+bond0     Link encap:Ethernet  HWaddr 52:54:00:00:00:22  
+          inet addr:192.168.0.206  Bcast:192.168.0.255  Mask:255.255.255.0
+          inet6 addr: fe80::5054:ff:fe00:22/64 Scope:Link
+          UP BROADCAST RUNNING MASTER MULTICAST  MTU:1500  Metric:1
+          RX packets:22606 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:972 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0 
+          RX bytes:4456947 (4.2 MiB)  TX bytes:103707 (101.2 KiB)
+
+eth0      Link encap:Ethernet  HWaddr 52:54:00:00:00:22  
+          UP BROADCAST RUNNING SLAVE MULTICAST  MTU:1500  Metric:1
+          RX packets:16578 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:846 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:3276234 (3.1 MiB)  TX bytes:92867 (90.6 KiB)
+
+eth1      Link encap:Ethernet  HWaddr 52:54:00:00:00:22  
+          UP BROADCAST RUNNING SLAVE MULTICAST  MTU:1500  Metric:1
+          RX packets:6028 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:126 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:1180713 (1.1 MiB)  TX bytes:10840 (10.5 KiB)
+
+----------------------------------------------------------------------------------
+
+=>so bonding is done right, now even if one of the interfaces eth0 or eth1 are down still bond0 works
+
+#ifdown eth1
+
+#cat /proc/net/bonding/bond0   
+------------------------------------------------------------------------
+Ethernet Channel Bonding Driver: v3.6.0 (September 26, 2009)
+
+Bonding Mode: fault-tolerance (active-backup)
+Primary Slave: None
+Currently Active Slave: eth0
+MII Status: up
+MII Polling Interval (ms): 50
+Up Delay (ms): 0
+Down Delay (ms): 0
+
+Slave Interface: eth0
+MII Status: up
+Speed: Unknown
+Duplex: Unknown
+Link Failure Count: 0
+Permanent HW addr: 52:54:00:00:00:22
+Slave queue ID: 0
+------------------------------------------------------------------------
+
+#watch –n1 cat /proc/net/bonding/bond0 ==> Every one sec, cat is done.  Now remove one of the Interfaces and see if the cat display refreshes
+
+#cat /sys/class/net/bonding_masters
+---------------------------------------------------
+bond0
+--------------------------------------------------
+
+#cat /sys/class/net/bond0/bonding/mode
+-----------------------------------------------------
+active-backup 1
+-----------------------------------------------------
+
+#cat /sys/devices/virtual/net/bond0/bonding/slaves
+----------------------------------------------------------------
+eth0
+----------------------------------------------------------------
+
+#ifup eth1
+
+#cat /sys/devices/virtual/net/bonding/slaves
+---------------------------------------------------------------
+eth0   eth1
+---------------------------------------------------------------
+
+#cat /sys/devices/virtual/net/bond0/bonding/active_slave
+--------------------------------------------------------
+eth0
+--------------------------------------------------------
+#ifdown eth0
+
+#cat /sys/devices/virtual/net/bond0/bonding/active_slave
+------------------------------------------------------------
+eth1
+------------------------------------------------------------
+       
+# cat /proc/net/bonding/bond0 
+----------------------------------------------------------------------
+Ethernet Channel Bonding Driver: v3.6.0 (September 26, 2009)
+
+Bonding Mode: fault-tolerance (active-backup)
+Primary Slave: None
+Currently Active Slave: eth1
+MII Status: up
+MII Polling Interval (ms): 50
+Up Delay (ms): 0
+Down Delay (ms): 0
+
+Slave Interface: eth1
+MII Status: up
+Speed: Unknown
+Duplex: Unknown
+Link Failure Count: 0
+Permanent HW addr: 52:54:00:ca:3c:40
+Slave queue ID: 0
+--------------------------------------------------------------------------
+
+#echo “eth1” > /sys/devices/virtual/net/bond0/bonding/active_slave ==> to change active slave
+
+
+
+
+STATIC ROUTING :  To enable communication between two networks 
+-------------
+
+NOTE: Do this practical in 3 virtual machines. or if you want to do in the physical machines remove br0's.
+      and make sure that physical machines are working properly (able to ping itself and server)
+
+                                            VM1
+                                          ======
+# service NetworkManager status
+# service NetworkManager stop
+# chkconfig NetworkManager off
+
+#vim /etc/sysconfig/network-scripts/ifcfg-eth0
+--------------------------------------------------------
+DEVICE=eth0
+ONBOOT=yes
+BOOTPROTO=none
+IPADDR=192.168.0.122
+NETMASK=255.255.255.0
+GATEWAY=192.168.0.254
+DNS1=192.168.0.254
+----------------------------------------------------------
+#ifdown eth0
+#ifup eth0
+#ifconfig eth0
+#ping 192.168.0.122
+
+
+
+#vim /etc/sysconfig/network-scripts/ifcfg-eth0:0
+--------------------------------------------------------
+DEVICE=eth0:0
+ONBOOT=yes
+BOOTPROTO=none
+IPADDR=10:0:0:7
+NETMASK=255.0.0.0
+GATEWAY=10.0.0.7
+----------------------------------------------------------
+#ifdown eth0:0
+#ifup eth0:0
+#ifconfig eth0:0
+#ping 10.0.0.7
+
+
+#vim /etc/sysconfig/network-scripts/ifcfg-eth0:1
+--------------------------------------------------------
+DEVICE=eth0:1
+ONBOOT=yes
+BOOTPROTO=none
+IPADDR=172.24.0.7
+NETMASK=255.255.0.0
+GATEWAY=172.24.0.7
+----------------------------------------------------------
+#ifdown eth0:1
+#ifup eth0:1
+#ifconfig eth0:1
+#ping 172.24.0.7
+
+
+
+#vim /etc/sysconfig/network-scripts/route-eth0
+----------------------------------------------
+ 10.0.0.0/8       via   10.0.0.7
+ 172.24.0.0/16    via   172.24.0.7
+:wq!
+------------------------------------------------
+
+ENABLE IP FORWARDING:
+----------------------
+
+#vim /etc/sysctl.conf
+------------------------------
+net_ipv4_forward=1
+-------------------------
+#sysctl -p
+
+
+
+                                    VM2
+                                  =======
+    
+#vim /etc/sysconfig/network-scripts/ifcfg-eth0
+------------------------------------------------------
+DEVICE=eth0
+ONBOOT=yes
+BOOTPROTO=none
+IPADDR=10.0.0.11
+NETMASK=255.0.0.0
+GATEWAY=10.0.0.7
+------------------------------------------------------
+#ifdown eth0
+#ifup eth0
+#ifconfig eth0
+    
+
+                                  VM3
+                                =======
+#vim /etc/sysconfig/network-scripts/ifcfg-eth0
+------------------------------------------------------
+DEVICE=eth0
+ONBOOT=yes
+BOOTPROTO=none
+IPADDR=172.24.0.11
+NETMASK=255.255.0.0
+GATEWAY=172.24.0.7
+------------------------------------------------------
+#ifdown eth0
+#ifup eth0
+#ifconfig eth0
+    
+
+
+
+         TEST:
+-------------------------
+10.0.0.11# ping 172.24.0.11
+         #ping 172.24.0.6
+
+172.24.0.11#ping 10.0.0.11
+           #ping  10.0.0.6
+
+

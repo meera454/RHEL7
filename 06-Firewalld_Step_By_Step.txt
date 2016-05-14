@@ -1,0 +1,107 @@
+		=================================================
+		****	Firewall Security Implementation *****
+		=================================================	
+	A.) firewalld provides a dynamically managed firewall with support for network,
+		 or firewall zones to define the trust level of network connections or interfaces.
+	B.) It has support for IPv4,IPv6 firewall settings and for ethernet bridges and a separation of runtime and permanent configuration.
+ 	C.) It also provides an interface for services or applications to add ip*tables and ebtables rules directly. 
+	
+		=================================================
+		**** Requirements Of Firewalld
+		=================================================
+	
+	A.) 	Packages
+		firewalld-0.3.9-7.el7.noarch
+		firewall-config-0.3.9-7.el7.noarch
+
+	B.)	Service (OR) Deamon
+		firewalld.service 		{/usr/lib/systemd/system/firewalld.service}
+
+	--------------------------------------------------------------------------------
+
+	****  These are the zones provided by firewalld sorted according to the default trust level of the zones from untrusted to trusted: 
+	
+	1-->  drop
+	 Any incoming network packets are dropped, there is no reply. Only outgoing network connections are possible.
+
+	2---> block
+	 Any incoming network connections are rejected with an icmp-host-prohibited message for IPv4 and icmp6-adm-prohibited for IPv6.
+	 Only network connections initiated within this system are possible.
+
+	3--> public
+	For use in public areas. You do not trust the other computers on networks to not harm your computer.
+	Only selected incoming connections are accepted.
+
+	4--> external
+	For use on external networks with masquerading enabled especially for routers.
+	You do not trust the other computers on networks to not harm your computer. Only selected incoming connections are accepted.
+
+	5--> dmz
+	For computers in your demilitarized zone that are publicly-accessible with limited access to your internal network.
+	Only selected incoming connections are accepted.
+
+	6--> work
+	For use in work areas. You mostly trust the other computers on networks to not harm your computer.
+	Only selected incoming connections are accepted.
+
+	7--> home
+	For use in home areas. You mostly trust the other computers on networks to not harm your computer. 
+	Only selected incoming connections are accepted.
+
+	8--> internal
+	For use on internal networks. You mostly trust the other computers on the networks to not harm your computer.
+	Only selected incoming connections are accepted.
+	
+	9--> trusted
+	All network connections are accepted. 
+
+--------------------------------------------------------------------------------
+
+
+	*** For  Checking The State Of Firewalld
+	#  firewall-cmd   --state
+
+	*** For Checking The List Zones
+	# firewall-cmd --get-zones
+
+	*** For Checking The Default Zone
+	# firewall-cmd --get-default-zone
+
+	*** For Checking The List of Supported Services
+	# firewall-cmd --get-services
+
+	*** For Checking The Service of Default Zone
+	# firewall-cmd --zone=public   --list-service
+
+	*** For Adding a Service in a Selected Zone
+	#  firewall-cmd  --zone=home  --add-service=http
+
+	*** For Removeing a Service in a Selected Zone
+	#  firewall-cms  --zone=dmz   --remove-service=https
+	
+	*** For Adding a Service in a Default Zone
+	#  firewall-cmd   --add-service=nfs
+
+	***  Enable panic mode to block all network traffic in case of emergency 
+	# firewall-cmd --panic-on
+
+	*** Disable panic mode 
+	#  firewall-cmd --panic-off
+
+
+	**** For  Adding a Rich Rule For Masqueradeing 
+	#  firewall-cmd    --permanent   --add-rich-rule='rule family=ipv4 source address=172.25.X.0/32 masquerade'
+
+	*** For Performing The Port Forwarding Activity 
+	#  firewall-cmd    --permanent   --add-rich-rule='rule family=ipv4 source address=172.25.X.0/32 forward-port port=443 protocol=tcp                 to-port=22'
+	#  firewall-cmd    --permanent   --add-rich-rule='rule family=ipv4 source address=172.25.X.0/32 forward-port port=80 protocol=tcp                 to-port=8080'
+
+
+	*** For Blocking  The Inward Traffic From a Particular Source (Machine)
+	#  firewall-cmd    --permanent   --add-rich-rule='rule family=ipv4 source address=172.25.X.10 reject'
+
+	*** For Blocking  The Inward Traffic From a Particular Network
+	#  firewall-cmd    --permanent   --add-rich-rule='rule family=ipv4 source address=172.25.X./32 reject'
+	
+	
+

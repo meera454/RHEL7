@@ -1,0 +1,109 @@
+
+#    **** Supported Packages Need To Be Installled
+
+echo  "Nagios Supporting Packages Need To Be Installed!!!"
+
+yum  install   *gcc*  gd* glibc*   http*  php mod_ssl*  openssl*   perl  xinet* -y
+
+#  Create  The Required User & Group Account
+
+echo  "Creating Required User Account For Nagios Application!!!"
+
+/usr/sbin/useradd -m nagios
+echo  nagios  | passwd  --stdin  nagios
+
+/usr/sbin/groupadd nagcmd
+/usr/sbin/usermod -a -G nagcmd nagios
+/usr/sbin/usermod -a -G nagcmd apache
+
+#  For Installing & Compileing Nagios Source Code
+
+echo "Nagios Source Code Compilation Will Commence Here on !!!"
+
+tar  -xvzf    /opt/nagios-3.2.3.tar.gz   -C  /opt
+cd  /opt/nagios-3.2.3
+sh  configure --with-command-group=nagcmd
+
+#  Compile the Nagios source code.
+
+make all
+make install
+make install-init
+make install-config
+make install-commandmode
+make install-webconf
+
+htpasswd -c /usr/local/nagios/etc/htpasswd.users    nagios
+service httpd  restart
+service xinetd restart
+chkconfig httpd  on
+chkconfig xinetd  on
+
+#########################################################
+#### Editing The Junk Part Inside Nagios Server !!!!!!!!!!
+##########################################################
+#    First Thing
+
+#    -->   #  cd   /usr/local/nagios/etc/
+#    -->   #  vim  cgi.cfg
+#    -->       Replace Nagiosadmin  with  the user used for Web Access
+
+#  Second Thing  Add The Host Entry Which You Want To Monitor
+#   -->    #   cd  /usr/local/nagios/etc/objects
+#   -->    #   vim   localhost.cfg
+		
+
+############################################################
+####  Down Below Should Also Be Done On Client Side AsWell!!
+############################################################
+#  NAGIOS PLUGINS  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+############################################################
+
+tar   -xvzf  /opt/nagios-plugins-HEAD.tar.gz     -C   /opt
+cd   /opt/nagios-plugins-1.4.16-226-g4933
+
+sh configure --with-nagios-user=nagios --with-nagios-group=nagios  --prefix=/usr/local/nagios  
+
+make
+make install
+make install-root
+
+chkconfig --add nagios
+chkconfig nagios on
+service nagios start
+
+/usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
+
+####################################################
+#############  NRPE  APPLICATION !!!!!!!!!!!!!!!!!!!
+#######################################################
+
+echo  "For  Installing The Nrpe Application"
+tar  -xvzf   /opt/nrpe-2.15.tar.gz   -C   /opt
+cd    /opt/nrpe-2.15
+
+./configure
+make  all
+make install-plugin
+make install-daemon
+make install-daemon-config
+make install-xinetd
+
+chkconfig  nrpe  on
+service  nrpe  restart
+
+####################################################################
+#### Editing The Junk Part Inside Nagios Client !!!!!!!!!!
+#####################################################################
+#
+#   First thing 
+#
+#   -->   #  vim   /etc/xinetd.d/nrpe
+#   -->   #    Add the Entry Of Nagios Server  on "only_from" Line
+
+#   Second Thing
+#
+#   -->  #  vim  /usr/local/nagios/etc/nrpe.cfg
+#   -->  #  Change The Server loopBack to NRPE Agent Box IP Address
+
+##################################################################

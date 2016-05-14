@@ -1,0 +1,166 @@
+			 =========================================
+                         ****    LAMP Server Requirement's *****
+                         =========================================
+	A.)     Packages
+                         http*
+			 mariadb*
+			 php*
+                         mod_ssl*
+                         mod_wsgi*
+                         crypto-util*
+
+        B.)     Port Numbers
+                        http    -       80
+                        https   -       443
+			mysql   -       3306
+
+        C.)     Configuration File's
+
+                        -->   /etc/httpd/conf/httpd.conf   (configuration file for http)
+                        -->   /etc/httpd/conf.d/ssl.conf    [ For ssl(https) ]
+			-->   /etc/my.cnf		[For MariaDb Server ]
+	
+	D.)	Service (or) Deamons
+
+			mariadb.service
+			httpd.service
+
+
+			  =================================================
+	                  ****    MariaDatabse Server Configuration *****
+                          =================================================
+
+
+	**** For Installing The Packages Required For Maria Database Sever.
+	[root@ServerX ~] #   yum    groupinstall mariadb mariadb-client     -y
+
+        ****  For  Enableing & Starting The Database Service (or) Deamon.
+        [root@serverX ~] #  systemctl enable  mariadb
+        [root@ServerX ~] #  systemctl start mariadb
+
+        **** Edit  The Main Configuration  File Of Maria Database Server.
+        [root@serverX ~]# vim /etc/my.cnf
+        [mysqld]        ### ----> [Under This line]
+        skip-networking=1
+        :wq!    ( Save & Quit )
+
+        ****  For  Enableing & Starting The Database Service (or) Deamon.
+        [root@ServerX ~]# systemctl restart mariadb
+
+	[root@serverX ~]# mysql_secure_installation
+        Enter current password for root (enter for none):   [Dont Give anything press enter]
+        Set root password? [Y/n] y
+        New password: animous [Give password]
+        Re-enter new password:  animous   [Retry same passwd]
+        Password updated successfully!
+        Reloading privilege tables..
+         ... Success!
+        Remove anonymous users? [Y/n] y
+        Disallow root login remotely? [Y/n] y
+        Remove test database and access to it? [Y/n] y
+        Reload privilege tables now? [Y/n] y
+
+        **** For Connecting To The Maria Database Server With privillage Account to Create Some Database & Tables.
+        [root@serverX ~]# mysql -u root -p
+
+        MariaDB [conatins]> create  database coss;
+        MariaDB [conatins]> use  coss;
+        MariaDB [conatins]> create  table instructors (NAME VARCHAR(20), TYPE VARCHAR(20), SEX CHAR(1), BATCH VARCHAR(10));
+        MariaDB [conatins]> insert into instructors (`NAME`, `TYPE`, `SEX`, `BATCH`) values ('SINGH','Guests','M', 'Morning');
+        MariaDB [conatins]> select  *  from  instructors;
+        MariaDB [conatins]> exit;
+
+			 =========================================
+                         ****    APACHE Server Configuration *****
+                         =========================================
+
+
+	 **** Install The Packages Of Apache Server.
+        [root@ServerX ~]# yum install httpd*  mod_ssl*  crypto-utils*   -y
+
+        *** Enable & Start The Service (or) Deamon Of Apache Server.
+        [root@ServerX ~]# systemctl enable httpd
+        [root@ServerX ~]# systemctl restart httpd
+
+
+        *** Create (or) Download The Source File For Web Page
+
+        [root@ServerX ~]# cd /var/www/html
+        [root@ServerX ~]# vim   index.php
+		<?php
+
+		    /* Connect to database */
+		    $link = mysql_connect("localhost", "root", "redhat")
+		        or die("Could not connect : " . mysql_error());
+
+		    print "Connected successfully";
+		    mysql_select_db("coss") or die("Could not select database");
+
+		    /* Perform SQL query */
+		    $query = "SELECT * FROM  instructor";
+		    $result = mysql_query($query)
+		        or die("Query failed : " . mysql_error());
+
+		    /* Print results in HTML */
+		    print "<table>\n";
+		    while ($line = mysql_fetch_array($result, MYSQL_ASSOC)) {
+	        	print "\t<tr>\n";
+		        foreach ($line as $col_value) {
+		            print "\t\t<td>$col_value</td>\n";
+	        	}
+		        print "\t</tr>\n";
+		    }
+		    print "</table>\n";
+		    mysql_free_result($result);
+
+		    /* Close connection */
+		    mysql_close($link);
+		?>
+		:wq!	( Save & Quit )
+
+        [root@ServerX html ]# ls
+
+        **** Edit (or) Create The Configuration File For the Respective Web Site
+        [root@ServerX~ ]# vim /etc/httpd/conf.d/main.conf
+
+        <Directory "/var/www/html">
+                  AllowOverride none
+                  Require all granted
+        /Directory>
+
+        <Directory "/var/www/html">
+                  Order allow,deny
+                  Allow from .example.com
+                  Deny  from .my133t.org
+        </Directory>
+
+        <VirtualHost *:80>
+                  ServerAdmin           root@ServerX.example.com
+                  ServerName            ServerX.example.com
+                  ServerAlias           ServerX
+                  DocumentRoot          "/var/www/html"
+                  DirectoryIndex        index.php
+                  ErrorLog              "logs/ServerX.log"
+        </VirtualHost>
+
+        :wq!    ( Save  & Quit )
+
+
+        *** Enable & Start The Service (or) Deamon Of Apache Server.
+        [root@ServerX ~]# systemctl restart httpd.service  mariadb.service
+
+	
+		 ==========================================
+        	**** In CLIENT (OR) DESKTOP Machine *****
+	        ==========================================
+
+        [root@desktopX ~]# yum install elinks*
+        [root@desktopX ~]# elinks ServerX.example.com
+                        (OR)
+        [root@DesktopX ~]# firefox   ServerX.example.com  &
+
+	----------------------------------------------------------------------------------------------
+	NOTE:-  The Web Page Should Display The Content Of The Database Stored  in the MariaDB Server.
+	----------------------------------------------------------------------------------------------
+
+

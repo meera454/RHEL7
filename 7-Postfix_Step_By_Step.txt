@@ -1,0 +1,369 @@
+				Email Server
+			      ===============
+In a company environment, email is an essential component to the work day. Email is used to communicate with both internal employees and external customers.
+
+
+==>There are a number of components that make up a complete email system. Below is a brief description of each one: 
+
+	---------------------
+	Mail User Agent(MUA):
+	---------------------
+
+This is the part of the system that the typical user is likely to be most familiar with. The Mail User Agent (MUA), or mail client, is the application that is used to write, send and read email messages. Anyone who has written and sent a message on any computer has used a Mail User Agent of one type or another. 
+
+Typical Graphical MUA’s on Linux are :Evolution,
+                                      Thunderbird and 
+                                      KMail.
+
+Typical Text mode MUA's on linux are : mail 
+                                     : mutt
+
+In windows                           : ms outlook
+
+	------------------------
+	Mail Transfer Agent(MTA):
+	-------------------------
+
+The Mail Transfer Agent (MTA) is the part of the email system that does much of the work of transferring the email messages from one computer to another (either on the same local network or over the internet to a remote system). Once configured correctly, most users will not have any direct interaction with their chosen MTA unless they wish to re-configure it for any reason. 
+
+ MTA's available for Linux including :sendmail,
+                                      Postfix, 
+                                      Fetchmail,  
+                                      Qmail and 
+                                      Exim.
+ 
+In windows mails servers  => EXCHANGE SERVER
+                          => IBM lotus notes
+
+
+==> Now let us discuss how an electronic mail works?    
+
+	----------------------------------------------------------
+	**** Mail Delivery Agent(MDA)/Local Delivery Agent(LDA) ***
+	-----------------------------------------------------------
+Another part of the infrastructure that is typically hidden from the user, the Mail Delivery Agent (MDA) sits in the background and performs filtering on the email messages between the Mail Transfer Agent and the mail client (MUA). The most popular form of MDA is a spam filter to remove all the unwanted email messages from the system before they reach the inbox of the user’s mail client (MUA).
+
+ Popular MDAs is Procmail.
+
+SMTP:
+-----
+SMTP is an acronym for Simple Mail Transport Protocol. This is the protocol used by the email systems to transfer mail messages from one server to another. This protocol is essentially the communications language that the MTAs use to talk to each other and transfer messages back and forth. 
+
+
+                   ==========================  
+	             ** POSTFIX Requirement **
+                   ==========================
+
+=>send mail and postfix servers are for sending and receiving the mails , by defaults sending facility will be available  but not receving.
+=>Every machine which is installed with Linux, postfix is internally enbaled.
+
+
+	A.) 	Packages
+		  postfix*
+		  dovecot*
+
+	B.)  	Port Number
+		  25 simple mail transfter protocol
+        	 110 post office protocol v3 (pop3)
+	         143 interim mail access protocol (imap)
+
+	C.)	configuration files 
+			 /etc/postfix/main.cf
+			 /etc/dovecot/dovecot.conf
+        	         /etc/aliases
+
+	D.)	Service/Daemon
+	          postfix.service
+
+
+
+	=====================================================
+         ** INSTALLATION & CONFIGURATION OF POSTFIX IN  *****
+        ====================================================
+	*** For Installing The Packages
+
+	[root@ServerX~]# rpm  -qa  |  grep postfix
+	[root@ServerX~]# yum  install  postfix* 
+	
+	*** For  Editing The Main Configuration File Of Postfix Server
+
+	[root@ServerX~]# vim /etc/postfix/main.cf
+	------------------------------------------------------------------------------------------------
+
+	myhostname = serverX.example.com         
+	mydomain = example.com                  
+	myorigin = $mydomain                   
+	inet_interfaces = all                 
+	mynetworks = 192.168.0.0/24, 127.0.0.0/8
+	home_mailbox = Maildir/                       
+	:wq!	( Save & Quit )
+	-------------------------------------------------------------------------------------------------
+	
+	**** For Enableing & Starting The Postfix 
+	  [root@ServerX~]#  systemctl  enable   postfix.service	
+	  [root@ServerX~]#  systemctl  restart  postfix.service	
+	
+	 *** For  check configuration errors
+	[root@ServerX~]# postfix  status
+	
+	*** For Checking The Nameing Resolution And Mx Entry In Dns Server
+	[root@ServerX~]# dig mail.serverX.example.com  --> to check nameresolution
+	[root@ServerX~]# dig mx  10 example.com        --> for checking the MX Nameing Resolutions
+
+	**** For Checking The Port Status Of Postfix
+	#netstat -tulnp | grep 25
+			
+			=================================================================
+	   		 ** For Testing The Email Configuration  Locallay on Email Server *
+			=================================================================
+	
+	-->  Show how to send mails using mail and mutt commands with in local host.
+	-->  and send a mail to remote machine and show that it is not receiving , solution is
+
+	[root@ServerX~]# mail -s "test"  root@desktop10.example.com  --> for remote users
+	-------------------------------------------------
+	hi how r you this is root
+	-------------------------------------------------
+	ctrl+d is to save and sent
+
+	        [root@ServerX~]# mutt
+	    m --> for mail
+	    to : student@desktop10.example.com   --> to send mail to a user who is present in remote system.
+                or
+        	 student                         --> if the user is available in the same system.
+	-----------------------------------------------------------------
+	hi how r you this is STudent !!!!!!!!!!
+	---------------------------------------------------------------
+	shiftzz  --> to save
+	y       --> to send a mail
+	q       --> quit out of mutt
+		
+		*** For Checking The Email From USer End ****
+	        [root@ServerX~]#  mail       --> to see root user mails
+	        [student@ServerX~] $ mail      --> to see student user mails
+
+	        [root@ServerX~]#  mail  -u student  --> if root want to see mails of student user in the same system.
+
+
+
+		
+					===================
+                                            Mail aliases
+                                        ===================
+		scenario:
+		--------
+	--> If any remote machine is sending a mail to admin user in desktop10.example.com it should received by harry user .who is present in dekstop10.example.com.
+
+
+		steps:
+		======
+	 [root@ServerX~]# vim /etc/aliases
+	--------------------------------------------
+	admin:    harry
+	--------------------------------------------
+	
+	**** For  Updateing The Alias File Changes TO Alias Database
+	 [root@ServerX~]##newaliases    --> to load the changes in the configuration file
+
+
+
+
+                               REJECTING BAD SUBJECT MAILS IN POSTFIX
+                               ======================================
+	*** Edit The Main Configuration File	
+
+	 [root@ServerX~]# vim /etc/postfix/main.cf
+	---------------------------------------------------------------
+	#mime_header_checks = regexp:/etc/postfix/mime_header_checks
+	#body_checks = regexp:/etc/postfix/body_checks
+	header_checks = regexp:/etc/postfix/header_checks
+	:wq!	(Save & Quit)
+	-----------------------------------------------------------------
+	
+	*** Create A New File With Respective Name	
+	 [root@ServerX~]# vim /etc/postfix/header_checks  (open)
+	-----------------------------------------------------------------
+	:330
+	below
+	 
+	header_checks
+	# 
+	#        mime_header_checks (default: $header_checks)
+	/^subject.*lottery||LOTTERY||Lottery/ REJECT   no such mails dont send me-->create this line
+	:wq!	( Save & Quit )
+	----------------------------------------------------------------------
+	
+	***For Restarting The Service (or) Deamon
+	[root@ServerX~]#  systemctl  restart  postfix.service
+
+ 			==================
+		             IN CLIENT:
+        	        ==================
+
+=> go to cleint and sent a mail with subject lottery, LOTTERY, Lotter you can't receive mails, but in the client machine if you run mail command , you can see this output.
+
+	 [root@ServerX~]# mail -s "lottery" root@desktopx.example.com
+	 [root@ServerX~]# mail
+
+-------------------------------------------------------------------------------------------
+<root@desktop6.example.com>: host desktop6.example.com[192.168.
+0.6] said: 550
+    5.7.1 dont send lottery related mails (in reply to end of D
+ATA command)
+-------------------------------------------------------------------------------------------
+
+
+                 RESTRICTING BAD BODY MAILS IN POSTFIX
+                 =====================================
+	*** For Editing The Main COnfiguration File Of Postfix
+	[root@ServerX~]#  vim /etc/postfix/main.cf
+	---------------------------------------------------------------
+	#mime_header_checks = regexp:/etc/postfix/mime_header_checks
+	body_checks = regexp:/etc/postfix/body_checks
+
+	-----------------------------------------------------------------
+
+	
+	*** For Editing The Main COnfiguration File Of Postfix
+	[root@ServerX~]#   vim /etc/postfix/body_checks   (create)
+	 ----------------------------------------------
+	/i love you/ REJECT No such spam please!!!!!
+	------------------------------------------------
+	
+	**** For Restarting The Service (or) Deamon
+	[root@ServerX~]# systemctl restart postfix.service
+
+	==============
+	GO TO CLIENT:
+	==============
+	[root@ServerX~]# mail -s "test23" root@desktopx.example.com
+	----------------------------------------
+	i dax i hate you
+	----------------------------------------
+	
+				 ================================
+                                     RESTRICTING ATTACHMENTS 
+                                    =========================
+	*** For Editing The Main COnfiguration File Of Postfix
+	 [root@ServerX~]#  vim /etc/postfix/main.cf
+	 --------------------------------------------------------
+	#header_checks = regexp:/etc/postfix/header_checks
+	
+	mime_header_checks = regexp:/etc/postfix/mime_header_checks
+	------------------------------------------------------------
+
+#vim /etc/postfix/header_checks
+----------------------------------------------------------
+:371
+/^Content-(Disposition|Type).*name\s*=\s*"?(.*(\.|=2E) --> copy this line and paste in the bellow file
+---------------------------------------------------------
+
+#vim /etc/postfix/mime_header_checks
+ ---------------------------------------------------------
+/^Content-(Disposition|Type).*name\s*=\s*"?(.*(\.exe)/ REJECT open format mails only
+------------------------------------------------------
+
+
+
+EXTRA NOTES:
+------------
+Many systems use the Sendmail MTA to transfer email messages and on many Linux distributions this is the default Mail Transfer Agent. Sendmail is, however, a complex system that can be difficult for beginner and experienced user alike to understand and configure. It is also falling from favor because it is considered to be slower at processing email messages than many of the more recent MTAs available.
+
+Many system administrators are now using Postfix or Qmail to handle email. Both are faster and easier to configure than Sendmail. For the purposes of this chapter, therefore, we will look at Postfix as an MTA because of its simplicity and popularity. If you would prefer to use Sendmail there are many books that specialize in the subject and that will do the subject much more justice than we can in this chapter. 
+
+
+
+pop3 --> copy and paste  / downloads from server
+imap --> cut and paste   / leaves the mails from server
+
+
+
+
+
+
+
+
+
+
+                                         Install Dovecot
+                                         ----------------
+[root@server ~]# yum install dovecot
+Configure Dovecot
+
+Open the dovecot config file /etc/dovecot/dovecot.conf. Find and uncomment the line as shown below.
+
+[root@server ~]# vi /etc/dovecot/dovecot.conf
+---------------------------------------------------------------------------------------------
+protocols = imap pop3 lmtp
+---------------------------------------------------------------------------------------------
+
+Open the file /etc/dovecot/conf.d/10-mail.conf and uncomment the line as shown below.
+
+[root@server ~]# vi /etc/dovecot/conf.d/10-mail.conf
+-------------------------------------------------------------------------
+mail_location = maildir:~/Maildir  ##line no 24 - uncomment
+-------------------------------------------------------------------------
+
+Open the /etc/dovecot/conf.d/10-auth.conf and edit as shown below.
+
+[root@server ~]# vi /etc/dovecot/conf.d/10-auth.conf
+-----------------------------------------------------------------------------------
+disable_plaintext_auth = no  ##line no 9 - uncomment and change from yes to no.
+auth_mechanisms = plain login  ##line no 97 - add the text "login"
+-----------------------------------------------------------------------------------
+
+Open the  #vim /etc/dovecot/conf.d/10-master.conf and edit as shown below.
+---------------------------------------------------------------------------------
+unix_listener auth-userdb {
+    #mode = 0600
+    user = postfix  ##line no 83 - uncomment and enter postfix
+    group = postfix  ##line no 84 - uncomment and enter postfix
+
+----------------------------------------------------------------------------------
+Start the dovecot service.
+
+[root@server ~]# service dovecot start
+Starting Dovecot Imap:                                     [  OK  ]
+[root@server ~]# chkconfig dovecot on 
+Test Dovecot
+
+The commands shown in bold should be entered by the user.
+
+[root@server ~]# telnet localhost pop3
+------------------------------------------------------------
+Trying ::1...
+Connected to localhost.
+Escape character is '^]'.
++OK Dovecot ready.
+user user1
++OK
+pass user1
++OK Logged in.
+list
++OK 1 messages:
+1 428
+.
+retr 1
++OK 428 octets
+Return-Path: <user1@ostechnix.com>
+X-Original-To: user1
+Delivered-To: user1@ostechnix.com
+Received: from localhost (localhost [IPv6:::1])
+ by server.ostechnix.com (Postfix) with ESMTP id 117113FF18
+ for <user1>; Thu,  7 Feb 2013 17:05:32 +0530 (IST)
+Message-Id: <20130207113547.117113FF18@server.ostechnix.com>
+Date: Thu,  7 Feb 2013 17:05:32 +0530 (IST)
+From: user1@ostechnix.com
+To: undisclosed-recipients:;
+test
+.
+quit 
++OK Logging out.
+Connection closed by foreign host.
+----------------------------------------------------------------------
+[root@server ~]# 
+Dovecot is working now.
+
+
+MDA:Mail Delivery Agent , delivers mail to the recipients local message store ( by default, /var/spool/mail/user), Postfix provides its own MDS to deliver to the default local file-based message store, /usr/libexec/postfix/local.
+

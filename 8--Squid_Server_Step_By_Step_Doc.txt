@@ -1,0 +1,200 @@
+		**** Squid (or) Proxy Server ****
+
+   	1.) Squid Server is used to share the internet  Access from one machine to several Squids Machine's.
+	2.) Squid Server can also be used to increase the internet performence by maintaing the access website cache locally in it.
+	3.)  Squid Server can also be used to Restricts(or) Allow the access for website.{ Firewall}
+
+
+	***** Requirements Of Squid Server ****
+
+	A.)	Packages
+		squid*
+	
+	B.)	Service (OR) Deamon
+		squid
+	
+	C.)	Port Number
+		3128
+
+	D.)	Configuration File Of Squid Server
+		/etc/squid/squid.conf
+
+Note:-  Proxy Server Should have a Minimum of two NIC Card's
+	1.)  One Nic Card Should Have Public IP Address Issued by ISP.
+	2.)  Second Nic Card Should Have Private IP Address Assinged by System (OR) Network Admin locally on LAN.
+
+	****   STEP  NO 1		
+
+#  --->	For Checking  the IP Address 
+
+	[root@Squid ~] #   ifconfig 
+
+  #  --> For Assigning (OR) Providing IP Address  by  editing  the ethernet configuration File Directly
+  ***** Edit  the Ethernet Device Configuration File  Manually to provide Public ip address *******
+
+	[root@Squid ~] #    cd        /etc/sysconfig/network-scripts
+	[root@Squid ~] # vim   ifcfg-eth0
+	
+	DEVICE=eth0
+	BOOTPROTO=none 
+	ONBOOT=yes
+	USERCTL=no 
+	NM_CONTROLLED=no
+	IPADDR=< public IP  Value given by ISP >
+	NETMASK= < Netmask Value given by ISP >
+	GATEWAY= < Gateway Value given by ISP >
+	DNS1=< DNS SERVER Value given by ISP >
+	
+	:wq!	( Save & Quit )
+
+ #  --> For Assigning (OR) Providing IP Address  by  editing  the ethernet configuration File Directly
+  ***** Edit  the Ethernet Device Configuration File  Manually to provide Private ip address *******
+
+	[root@Squid ~] #    cd        /etc/sysconfig/network-scripts
+	[root@Squid ~] # vim   ifcfg-eth1
+	
+	DEVICE=eth1
+	BOOTPROTO=none 
+	ONBOOT=yes
+	NM_CONTROLLED=no
+	IPADDR=< Private IP  Value Used In LAN >
+	NETMASK= < Netmask Value Used In LAN >
+	
+	:wq!	( Save & Quit )
+ 
+	***** For Enableing The Service (OR) Deamon Of Network
+	[root@Squid ~]# chkconfig network   on
+	[root@Squid ~]# service network restart
+
+	**** For Checking The Default Gateway 
+	[root@Squid ~]# route -nv				
+	
+	**** Provide  The Dns IP Address Resolution 
+	[root@Squid ~]# cat /etc/resolv.conf		# Check DNS     IP
+
+	**** For Changeing The System Hostname 	
+
+	[root@Squid ~]# hostname Squid.example.com
+	[root@Squid ~]# hostname 
+	Squid.example.com
+
+
+	[root@Squid ~]# vi  /etc/sysconfig/network
+	NETWORKING=yes
+	HOSTNAME=Squid.example.com
+	:wq!  ( Save & Quit )
+	
+	**** --> Edit The Host File for Local System Hostname Resolution.
+	[root@Squid ~]# vi /etc/hosts
+
+	127.0.0.1       localhost.localdomain   localhost
+	192.168.0.20     Squid.example.com      Squid
+	:wq! ( Save & Quit )
+
+	***	NOW LOG OFF & LOG IN	***
+
+	Note: - Now Open the Browser & Check Internet is comming on Proxy Server First.
+
+
+
+	STEP NO  2 
+
+	****  For  CHECK & INSTALL THE PACKAGES  *******
+
+	[root@Squid ~]# rpm    -qa       squid*
+			(or)
+	[root@Squid ~]# yum     list      installed  squid*
+
+	---> For Removeing The Existing Squid Package if Any.
+
+	[root@Squid ~]# yum remove squid* -y
+
+
+	****   Now Install the packages  ***
+
+	[root@Squid ~]# yum  install squid* -y
+
+STEP NO  3
+
+	****  Edit Main Configuration File Of Squid Server *****
+
+	[root@Squid ~]# vi /etc/squid/squid.conf
+
+	# 1 ) To Configure squid as only Simple Proxy i.e Only For sharing
+
+	 	http_port        3128
+ 		visible_hostname  examplePROXY
+
+	# 2 ) To Configure squid as Caching Proxy i.e caching website in local harddisk 
+        
+		  cache_dir     ufs      /var/spool/squid     100 16 256
+
+	# 3) To Configure squid as Proxy FireWall 
+		# syntax for the firewall rule
+		# acl aclname acltype string1/file_name
+
+	# INSERT YOUR OWN RULE(S) HERE TO ALLOW ACCESS FROM YOUR SquidS
+	####################################################################
+ 
+	#  ---> create a rule for particular network
+	acl       examplelcossnetwork             src            192.168.0.0/24
+
+	#create a rule for blocking particular site say www.naukri.com
+	acl     jobsite                 url_regex       "/etc/squid/block_sites"
+ 
+	#create a rule for time duration
+	 acl     classtime               time            S M T W H F A        18:30-22:30
+ 
+ 	#       http_access allow all  NOTE:- Deny Rules Should be given first
+	         http_access deny  jobsite
+	        http_access deny  classtime 
+	        http_access allow examplelcossnetwork	
+
+	####################################################################
+ 	:wq!   ( Save & Quit )
+
+	****  --> Create The new File  to  provide blocked site information.
+	#  vim   /etc/squid/block_sites
+	www.facebook.com
+	www.gmail.com
+	www.youtube.com
+	:wq!	( Save & Quit )
+
+	
+	STEP NO 4
+
+	--> For Enableing The Service (OR) Deamon Of Squid.
+
+	[root@Squid ~]# chkconfig squid   on
+	[root@Squid ~]# service squid restart
+
+
+
+
+	******* 	Client Side Configuration   *******
+	----> Provide The Proxy Server IP Address  & Port Number In Every Clent  Web Brower.
+	---->  NOTE:- For Squid any Browser is a Squid  i.e a Squid can be on server or any other machine.
+
+1) In Client Side Open the Firefox
+
+	Open Firefox
+		-> Edit
+			-> Preference
+				-> Advance Tab  
+					-> Network Tab 
+						--> Clieck  Setting  Tab
+						 	->Manual Proxy configuration
+								->HTTP Proxy 192.168.0.X    Port 3128
+
+	Note:-Where X is the Squid servers IP
+	Now type the website names in locationbar
+
+2) If a Client Side is Internet Explorer
+
+	Open Internet Explorer
+		Tools
+		    ->Internet Options 
+			       ->Connections
+					-> LAN Setting 
+						->Proxy Server
+							-> Address 192.168.0.X      Port 3128

@@ -1,0 +1,358 @@
+                      
+                        	  Apache
+                     ###    =================
+
+	***  Apache is a free and open source software
+	***  Apache is the  most popular linux-based webserver application. which is used to host the web sites. 
+	***  The majority of all web servers using Apache are linux web servers.
+
+	 ==>      HTTP(Hyper Text Transfer Protocol) 
+
+			 =========================================
+                         ****    APACHE Server Requirement's *****
+                         =========================================
+ 	A.)	Packages
+			 http*
+			 mod_ssl*
+			 mod_wsgi*
+			 crypto-util*
+			
+	B.)	Port Numbers
+			http	-	80
+			https	-	443
+
+	C.)	Configuration File's
+			
+			-->   /etc/httpd/conf/httpd.conf   (configuration file for http)
+                        -->   /etc/httpd/conf.d/ssl.conf    [ For ssl(https) ]
+
+	D.)     Document Root    -   /var/www/html
+ 
+	E.)     Service/Daemon   -   httpd.service 
+
+        F.)     Log File's        -   /var/log/httpd/access_log
+                                      /var/log/httpd/error_log
+                           
+
+
+	***** Name BASED Virtual Hosting:
+	==========================
+	Hosting multiple sites on single IP is called as name based virtual hosting.
+
+	****** IP BASED Virtual Hosting:
+	=========
+	Accessing a site on IP without using name is called as IP based hosting, 
+        for example we will host ip based on this 192.168.0.x2
+
+	***** Port BASED Virtual Hosting:
+	==================
+	Hosting sites other than default port (i.e 80) is called as port based hosting, 
+	for example we will configure www.google.com  at 5000
+
+
+	============================================================
+	#!!!!!! Implementation Step Of Apache Server !!!!!!!!!!!!!#
+	============================================================                                   
+	
+	First Question:-  Configure "web server":
+	
+		A.)  Configure your system as "web server" for the site http://sysetm1.group11.example.com. 
+		B.)  Download the web page station.html from http://classroom.example.com/pub/updates/station.html. 
+		C.)  Rename the the downloaded page as "index.html" Copy the "index.html" page to the "document root".
+		D.)  Do not make any modifications to the content of index.html.
+
+	Solution : 
+
+	**** Install The Packages Of Apache Server.
+	[root@ServerX ~]# yum install httpd*  mod_ssl*  crypto-utils*   -y
+	
+	*** Enable & Start The Service (or) Deamon Of Apache Server.
+	[root@ServerX ~]# systemctl enable httpd
+	[root@ServerX ~]# systemctl restart httpd
+
+	**** Relax The Firewall Policys on The Server
+	[root@ServerX ~]# firewall-cmd --permanent --add-service=http
+	[root@ServerX ~]# firewall-cmd --reload 
+
+	*** Create (or) Download The Source File For Web Page
+	[root@ServerX ~]# cd /var/www/html
+	[root@ServerX ~]# wget -O  index.html  http://classroom.example.com/pub/updates/station.html
+	[root@ServerX ~]# ls
+			(or)
+
+	[root@ServerX ~]# cd /var/www/html
+	[root@ServerX ~]# wget   http://classroom.example.com/pub/updates/station.html
+	[root@ServerX html ]# ls
+	[root@ServerX html ]# mv station.html index.html 
+
+	**** Edit (or) Create The Configuration File For the Respective Web Site
+	[root@ServerX~ ]# vim /etc/httpd/conf.d/main.conf
+
+	<Directory "/var/www/html">
+		  AllowOverride none
+		  Require all granted
+	/Directory>
+
+	<Directory "/var/www/html">
+		  Order allow,deny
+		  Allow from .example.com
+		  Deny  from .my133t.org
+	</Directory>	
+
+	<VirtualHost *:80>
+		  ServerAdmin		root@ServerX.example.com
+		  ServerName 		ServerX.example.com
+		  ServerAlias	 	ServerX
+		  DocumentRoot  	"/var/www/html"
+		  DirectoryIndex 	index.html
+		  ErrorLog   		"logs/ServerX.log" 
+	</VirtualHost>
+
+	:wq!	( Save  & Quit )
+
+	
+	=======================================
+	#!!! Client Side Configuration !!!!
+	=======================================
+
+	-> Goto Client Desktop Machine
+	
+	**** For Opening The Web Site
+	[root@DesktopX ~]# firefox   serverX.example.com &
+				(OR)
+	[root@DesktopX ~]# curl -k http://ServerX.example.com  [Out put should gom in single line]
+
+	============================================================	
+	Second Question:- Configure "web server":
+	============================================================
+
+	A.) Create the directory "private" for the DocumentRoot of your webserver.
+	B.) Download the page "host.html" from http://server.group11.example.com/pub/matarials/host.html.
+	C.) Move as index.html.It should be accessable to group11.example.com and not to any other host.
+
+	Solution:-
+	
+	*** Create The Directory 
+	[root@ServerX ~]# cd     /var/www/html
+	[root@ServerX ~]# mkdir  private
+
+	*** Create (or) Download The Source File For Web Page
+	[root@ServerX private]# cd /var/www/html/private
+	[root@ServerX private]# wget -O index.html   http://classroom.example.com/pub/updates/host.html
+				(OR)
+	[root@ServerX private]# wget   http://classroom.example.com/pub/updates/host.html
+	[root@ServerX private]# mv    host.html    index.html
+
+	**** Edit The Configuration File
+	[root@ServerX html]# vim /etc/httpd/conf.d/main.conf 
+
+	<Directory "/var/www/html">
+		   AllowOverride none
+		   Require all granted
+	</Directory>
+
+	<Directory "/var/www/html">
+		Order allow,deny
+		Allow from .example.com
+		Deny from  .my133t.org
+	</Directory>
+
+	<VirtualHost *:80>
+		  ServerAdmin		root@ServerX.example.com
+		  ServerName 		ServerX.example.com
+		  ServerAlias	 	ServerX
+		  DocumentRoot  	"/var/www/html"
+		  DirectoryIndex 	index.html
+		  ErrorLog   		"logs/ServerX.log" 
+	</VirtualHost>
+
+	###########################################################################################
+	#  !!! Add This Following Line For Shareing The Folder In Existing Configuration File!!
+	###########################################################################################
+
+	<Directory "/var/www/html/private">
+		  Order allow,deny
+		  Allow from ServerX.example.com	(allow only local system)
+		  Deny  from all
+	</Directory>			
+
+	##############################################################
+	:wq!	( Save & Quit )
+	
+	**** RestartThe Service 
+	[root@ServerX ~]# systemctl restart httpd
+
+	==================================
+	# -> Go to client Desktop Machine
+	=================================
+
+	[root@desktopX ~]# yum install elinks*
+	[root@desktopX ~]# elinks ServerX.example.com/private
+			(OR)
+	[root@DesktopX ~]# firefox   ServerX.example.com/private &
+
+	===================================
+	# --> Go to foundation system !!!!
+	===================================
+
+	*** Open firefox On Foundation Base Machine
+
+	[root@foundationX ~]# firefox   ServerX.example.com/private  &
+	It Should show Forbidden
+
+
+	================================================================
+	# !!!! Third Question  Configure name virtual hosting server:
+	================================================================
+
+	A.) Configure the name virtual hosting server for the site http://wwwX.groupX.example.com.
+	B.) Download the page "www.html" from http://server.group11.example.com/pub/materials.
+	C.) Copy as index.html under documenRoot "/var/www/virtual".
+	D.) User called rock should able to add some content into /var/www/virtual directory.
+	E.) System1.group11.example.com should able to access the virtual hosting.
+
+	Solution:-
+	
+	**** Create A New DocumentRoot Folder For The Virtual Folder
+	[root@ServerX ~]#  cd    /var/www
+	[root@ServerX ~]#  mkdir   virtual
+	[root@ServerX ~]#  cd /var/www/virtual
+
+	***  For  Setting File Level Permission For User With ACL
+	#  setfacl  -m  u:rock:rwx   /var/www/virtual
+
+	*** Create (or) Download The Source File For Web Page
+	[root@ServerX virtual]# cd /var/www/virtual
+	[root@ServerX virtual]# wget -O index.html   http://classroom.example.com/pub/updates/host.html
+				(OR)
+	[root@ServerX virtual]# wget   http://classroom.example.com/pub/updates/host.html
+	[root@ServerX virtual]# mv     host.html    index.html
+
+	*** Create (or) Edit The Configuration File
+	[root@ServerX ~]#  vim /etc/httpd/conf.d/virtual.conf 
+
+		<Directory "/var/www/virtual">
+			  Require all granted
+			  AllowOverride none
+		</Directory>
+
+		<VirtualHost *:80>
+			  ServerAdmin   root@wwwX.example.com
+			  ServerName    wwwX.example.com
+			  ServerAlias   wwwX
+			  Documentroot  "/var/www/virtual"
+			  DirectoryIndex  index.html
+			  ErrorLog   "logs/wwwX.log"
+		</VirtualHost>
+		:wq!	( Save  & Quit )
+
+	**** Restart The Deamon & Service
+	[root@ServerX ~]# systemctl restart httpd.service
+
+	==================================
+	# -> Go to client Desktop Machine
+	=================================
+
+	[root@desktopX ~]# yum install elinks*
+	[root@desktopX ~]# elinks WWWX.example.com  
+			(OR)
+	[root@DesktopX ~]# firefox   WWWX.example.com  &
+
+	================================================================
+	# !!!! Fourth Question  Configure Apache Server !!!!!!!!!!!!!!!!
+	================================================================
+	Question:- Configure SSL web server
+
+	A.) Configure secure web server site name http://system1.group11.example.com
+	B.) Download The Certificate from http://serevr.group11.example.com/pub/tls/private/system1.crt
+	C.) Download The Certificate http://server.group11.example.com/pub/tls/private/system1.key 
+
+	Solution:
+	
+	**** Install The Packages For APache Server
+	[root@ServerX ~]# yum install http*  crypto-util* mod_ssl*
+	
+	*** For Relaxing The Firewall Policy's
+	[root@ServerX ~]# firewall-cmd --permanent --add-service=https 
+	[root@ServerX ~]# firewall-cmd --reload 
+	
+	*** For Downloading The Certificates 	
+	[root@ServerX ~]# cd /etc/pki/tls/certs 
+	[root@ServerX ~]# wget http://classroom.example.com/pub/tls/certs/ServerX.crt
+	[root@ServerX ~]# wget http://classroom.example.com/pub/example-ca.crt
+
+	*** For Downloading The Certificates Keyring Tokens
+	[root@ServerX ~]# cd /etc/pki/tls/private
+	[root@ServerX ~]# wget http://classroom.example.com/pub/tls/private/ServerX.key
+
+	[root@ServerX ~]# vim /etc/httpd/conf.d/main.conf
+	<VirtualHost *:80>
+		   ServerAdmin root@ServerX.example.com
+		   Documentroot /var/www/html
+		   ServerName ServerX.example.com
+	</VirtualHost>
+
+	<Directory "/var/www/html">
+		  Order allow,deny
+		  Allow from .example.com
+		  Deny from .my133t.org
+	</Directory>
+
+	<Directory "/var/www/html/private">
+		  Order allow,deny
+		  Allow from .example.com
+	</Directory>
+
+	<Directory "/var/www/html">
+		   AllowOverride none
+		   Require all granted
+	</Directory>
+
+##############  Add Only lines Which are in side this Hashes To end of this file #####
+	<VirtualHost *:443>
+		ServerName ServerX.example.com
+		SSLEngine on
+		SSLProtocol all -SSLv2 -SSLv3
+		SSLCipherSuite HIGH:MEDIUM:!aNULL:!MD5
+		SSLHonorCipherOrder on
+		SSLCertificateFile /etc/pki/tls/certs/ServerX.crt
+		SSLCertificateKeyFile /etc/pki/tls/private/ServerX.key
+		SSLCertificateChainFile /etc/pki/tls/certs/example-ca.crt
+		DocumentRoot /var/www/html
+	</VirtualHost>
+	######################################################################################
+	[root@ServerX Desktop]# systemctl restart httpd
+
+	---> Go to the client system
+	---> Open browser and search for below sites
+	--->  https://ServerX.example.com    [This Is original to search and then search also]
+	--->  ServerX.example.com
+	--->  ServerX.example.com/private
+	--->  www6.example.com
+
+	Note: All should give proper output
+_____________________________________________________________________________________________________
+	===============================================================
+	Question: Configure wsgi web server:!!!!!!!!!!!!!
+	===============================================================
+
+	A.) Configure "wsgi" web server site name "webappX.example.com".
+	B.) Download dynamic WSGI conent from http://classroom.example.com/pub/update/weapp.wsgi 
+	C.) Stored inside  virtual web server DocumentRoot of your webserver. and donot effect virtual web serevr.
+
+	Solution:-
+
+	[root@ServerX Desktop]# yum install mod_wsgi
+	[root@ServerX Desktop]# cd /var/www/virtual/
+	[root@ServerX virtual]# wget http://classroom.example.com/pub/updates/webapp.wsgi
+	[root@ServerX virtual]# vim /etc/httpd/conf.d/webapp.conf
+	Listen 8990
+	<VirtualHost *:8999>
+	ServerName webapp6.example.com:8999
+	WSGIScriptAlias / /var/www/virtual/webapp.wsgi
+	</VirtualHost>
+	[root@ServerX virtual]# systemctl restart httpd
+	[root@server0 ~]# firewall-cmd --permanent --add-port=8999/tcp
+	success
+
+

@@ -1,0 +1,190 @@
+        	                      SAMBA PROFILE 
+		        =================== ==========================
+ 	1:- Samba server is used to share  filesystem, Files, Home Directory's and printers.
+	2:- Samba Server Can aslo Share users across different plotforms. (Linux/Unix -> windows and vice-versa)
+
+	*************** Requirements Of Samba Server ***********
+	============================================================
+
+	A.)	Packages   :     samba* 
+				 cifs-utils.*
+
+				--> samba.x86_64
+				--> samba-client.x86_64
+				--> samba-common.x86_64
+				--> samba-libs.x86_64
+				--> samba-python.x86_64
+				--> samba-winbind.x86_64
+				--> samba-winbind-modules.x86_64 
+
+	B.)  Port Numbers  :   137(udp)-> used for name resolution
+	        	       138(udp) 
+        		       139(tcp)-> used for data transfer
+	        	       445(tcp)
+
+	C.)   Daemons      :         smb.service  
+			 	     nmb.service  
+
+	D.)  Configuration files	   : /etc/samba/smb.conf 
+	
+	E.)  Debbugging Tool               :  testparm
+
+	###############################################################################################
+	+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	Question: Configure SAMBA SHARE:  
+    
+		1.) Share the directory "/common" via samba. Your Samba server must be a member of "STAFF" workgroup.
+		2.) The share name must be "common".Make sure that browseable must be enabled.
+		3.) The shared must be available to group11.example.com clients only.
+		4.) The user "frank" should have read access to the share with samba password "animous".
+
+	
+	Solution:-
+
+		**** Install The Packages on Samba Server Machine
+		[root@serverX ~]# yum install samba*  cifs-utils* -y 
+	
+		**** Enable & Start The Service (or) Deamon Of Samba Server
+		[root@serverX ~]# systemctl enable smb nmb
+		[root@serverX ~]# systemctl start smb nmb
+
+		*** For Relaxing  The Firewall policy for Accepting The traffic of  Samba Server
+		[root@serverX ~]# firewall-cmd --permanent --add-service=samba  --add-service-samba-client
+		[root@serverX ~]# firewall-cmd --complete-reload
+		
+		*** For Creating The Shared Resource 
+		[root@serverX ~]# mkdir /common
+		[root@serverX ~]# touch /common/samba{1..6}.txt
+		
+		*** For Changeing The Selinux File Level Context
+		[root@serverX ~]# chcon   -t  samba_share_t    /common  -R
+					(OR)
+		[root@serverX ~]# semanage fcontext -a -t samba_share_t "/common(/.*)?"
+		[root@serverX ~]# restorecon -vvFR /common/
+		
+		*** For Creating The User Account On Samba Server
+		[root@serverX ~]# useradd -s /usr/sbin/nologin frank
+		[root@serverX ~]# smbpasswd -a frank
+		New SMB password:
+		Retype new SMB password:
+		Added user frank.
+		
+		****  Edit  The Samba Server Configuration File
+		[root@serverX ~]# vim /etc/samba/smb.conf
+        		workgroup = STAFF     [Line number 88]
+
+		[common]                                        [End of the config file]
+        		comment = Public Stuff
+	        	path = /common
+		        valid users = frank
+		        browseable = yes
+	        	hosts allow = 172.25.
+
+		****  Restart The Service (or) Deamon Of Samba Server
+		[root@serverX ~]# systemctl restart smb
+		[root@serverX ~]# systemctl restart nmb
+
+	###################################################################
+	+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	$$$$$$$$$$$$   IF you want to test go to client system	
+	===================================================================
+	
+		**** Install The Package For Samba Client
+		[root@desktopX ~]# yum install cifs-utils*   samba-client*
+		
+		**** For Mounting (or) Mapping the Samba Server Share Drive
+		[root@desktopX ~]# mkdir /coss
+		[root@desktopX ~]# mount //172.25.X.11/common /coss -o username=frank
+		[root@desktopX ~]# df -Th
+
+
+	###############################################################################################
+	+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	Question: Configure SAMBA SHARE:
+
+	1.)  Share the directory "/secure" via samba. The share name must be "secure".
+	2.)  Make sure that Marketing Group have read and Write Access to the share.
+	3.)  The user "rob" should have read access to the share with samba password "animous".
+	4.)  user "robby" should have read and write access to the share with samba password "animous".Robby should me a member of marketing grp.
+
+	
+	*** For Creating a Group.
+	[root@ServerX ~]# groupadd marketing
+	
+	*** For  Creating  The Share Directory.
+	[root@ServerX ~]# mkdir /secure
+	
+	*** For Changeing The Group Ownership of a Directory.
+	[root@ServerX ~]# chgrp marketing /secure
+	
+	*** For Applying The Diretory Level Permission & Advance File Permission.
+	[root@ServerX ~]# chmod 2775 /secure
+
+	*** For Changeing The Selinux File Level Context
+	[root@serverX ~]# chcon   -t  samba_share_t    /secure   -R
+				(OR)
+	[root@serverX ~]# semanage fcontext -a -t samba_share_t "/secure(/.*)?"
+	[root@serverX ~]# restorecon -vvFR /secure
+	
+	*** For Creating a User Account's.
+	[root@ServerX ~]# useradd -s /sbin/nologin   rob 
+	[root@ServerX ~]# useradd -s /sbin/nologin -G marketing robby
+	
+	*** For Provideing The Universal Samba Password
+	[root@ServerX ~]# smbpasswd -a rob  [give password animous as qustion]
+	[root@ServerX ~]# smbpasswd -a robby
+
+
+	**** Edit The Main Configuration File Of Samba Server
+	[root@ServerX ~]# vim /etc/samba/smb.conf
+
+	[secure]
+        	comment = securing share
+	        path = /secure
+	        write list =@marketing
+	        hosts allow = 172.25.
+		:wq!	( Save & Quit )
+	
+	*** Restart The Service (or) Deamon
+	[root@serverX ~]# systemctl restart smb  nmb
+
+	###############################################################################################
+	+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	Question: Multiuser Samba Mount:
+	
+	1.) Mount the samba share permantly on the /mnt/secure mount point on system2 as a
+	2.) Multiuser mount. mount samba share wirh the credentials of user robby user and password animous.
+
+	Solution:
+
+	**** For Installing The Required Package
+	[root@DesktopX ~]# yum install cifs-utils*
+	
+	*** For Createing A Directory
+	[root@DesktopX ~]# mkdir /mnt/secure
+	[root@DesktopX ~]# echo 'username=robby' >> /root/smbpasswd.txt
+	[root@DesktopX ~]# echo 'password=animous' >> /root/smbpasswd.txt
+	
+	*** Edit The File System Table File
+	[root@DesktopX ~]# vim /etc/fstab
+	//server6.example.com/secure  /mnt/secure       cifs credentials=/root/smbpasswd.txt,multiuser,sec=ntlmssp 0 0
+	:wq!	( Save & Quit )
+
+	[root@DesktopX ~]# df -h
+	[root@DesktopX ~]# mount -a
+	[root@DesktopX ~]# df -h
+	[root@DesktopX ~]# useradd robby
+	[root@DesktopX ~]# su - robby
+	[robby@DesktopX ~]$ cifscreds add  server6.example.com   (give user robby smb password which is on smb server)
+	[robby@DesktopX ~]$ cd /mnt/secure/
+	[robby@DesktopX ~]$ ls
+	[robby@DesktopX ~]$ touch file1   (file will be created as user rob has permission on smb share)
+	[robby@DesktopX ~]$ logout
+	[root@DesktopX ~]#
+	[root@DesktopX ~]# su - rob
+	[rob@DesktopX ~]$ cifscreds add server6.example.com  (give rob smb password)
+	[rob@DesktopX ~]$ cd /mnt/secure/
+	[rob@DesktopX ~]$ ls
+	[rob@DesktopX ~]$ touch file1
+	touch: cannot touch ‘file1’: Permission denied
+

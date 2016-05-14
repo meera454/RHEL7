@@ -1,0 +1,376 @@
+				  	Network File Service 
+				    =======================
+
+ ****  NFS(Network File service/system) : To share files and file systems across same platform ( linux/unix envirnment)
+------------------------------------------------------------------------------------------
+
+                            NFS PROFILE
+                            =============
+	package       : nfs-utils*
+
+	port no       : 2049 nfs-server  ,   111   rpcbind
+
+        Daemons(or) Service       : nfs-server.service , rpcbind.service  (when you run these two they control remaining deamons)
+
+		configuration files : 
+		---------------------
+
+	1.)   /etc/sysconfig/nfs  :Contains the main config files for the NFS service
+	2.)   /etc/exports        :Contains a list of resources that will be exported (made available) to clients
+
+	Script(or) Deamon          : /usr/lib/systemd/system/nfs-server.service
+	-----------------
+			          : /usr/lib/systemd/system/rpcbind.service
+ 
+     	****** Permission Can Be Used Under NFS Server COnfiguration **** 
+================================================================================================================================
+ro
+==
+
+The exported file system is read-only. Remote hosts cannot change the data shared on the file system. To allow hosts to make changes to the file system (that is, read/write), specify the rw option. 
+
+wdelay:
+======
+The NFS server will delay writing to the disk if it suspects another write request is imminent. This can improve performance as it reduces the number of times the disk must be accesses by separate write commands, thereby reducing write overhead. To disable this, specify the no_wdelay. no_wdelay is only available if the default sync option is also specified. 
+
+root_squash
+==========
+    This prevents root users connected remotely (as opposed to locally) from having root privileges; instead, the NFS server will assign them the user ID nfsnobody. This effectively "squashes" the power of the remote root user to the lowest local user, preventing possible unauthorized writes on the remote server. To disable root squashing, specify no_root_squash. 
+
+To squash every remote user (including root), use all_squash. To specify the user and group IDs that the NFS server should assign to remote users from a particular host, use the anonuid and anongid options, respectively, as in: 
+                           or
+The option 'root_squash' causes files acessed/created by 'root' on the NFS client to be given the permissions of a non-root user on the NFS server. The idea is to increase security by preventing a ownership of the root account on one system 'migrating' to the server.
+
+The option 'no_root_squash' basically allows the root user on the client to access/create files on the NFS server as root. Typically this is needed if you are hosting root filesystems on the NFS server (for diskless clients). If you don't things break... 
+
+async:
+=====
+--> async writes the changes first onto the local disk and when it finds network free then it writes the changes to the server disk.
+
+Advantages : Network traffic is efficient.
+
+sync: 
+====
+sync forces memory to be written on to the server disk immediately.
+
+advantages:
+===========
+--> client machines writes on to server disk immediately , so server machines disk is up to date. Like BANKING applications you would want to all your writes to be synchronized to the server disk before the NETWORK  (or) some computers goes down
+
+sec
+===
+For Defineing The Type Secureity Options
+
+====================================+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@================================================================
+Q :Export your "/nfsshare" via NFS to the example.com domain, Note: you don't have permssion to mount. you can check nfsclient using /net/(ipaddress).
+
+	Senario: Here I am assuming that my Virtual Machine[Server] For NFS Server System IP is 172.25.X.11[NFS SERVER]
+		 Here I am assuming that my Virtual Machine[Server] For NFS Client System IP is 172.25.X.10[NFS Client]
+
+	[root@ServerX~]# rpm -qa | grep -i nfs
+
+	[root@ServerX~]# yum install nfs* -y
+
+	[root@ServerX~]# mkdir /nfsshare
+
+	sysntax: export host(options) 
+        	 export host1(options1) host2(options2) host3(options3)
+
+	export  -->    The directory being exported 
+	host    -->    The host or network to which the export is being shared 
+	options -->    The options to be used for host 
+
+	/nfsshare     192.168.1.0/255.255.255.0(ro),172.25.X.0/255.255.255.0(ro)
+
+
+	**** Edit The Nfs Server Configuration File
+
+	[root@ServerX~]# vim /etc/exports
+	----------------------------------------------
+	/nfsshare    172.25.X.0/24(ro)
+	--------------------------------------------
+	:wq!	( Save & Quit )
+
+	****To Validate & UPdate The Entrys Entered in NFS Server COnfiguration FIle
+	[root@ServerX~]#   exportfs   -rvf
+
+	[root@ServerX~]# systemctl   enable  nfs-server.service
+	[root@ServerX~]# systemctl   enable  rpcbind.service
+
+	[root@ServerX~]# systemctl   restart  nfs-server.service
+	[root@ServerX~]# systemctl   restart  rpcbind.service
+
+
+	$$$$$	IN CLIENT MACHINE:
+	--------------------------
+
+	[root@DesktopX~]# ping 172.25.X.11   ( to check whether are you able to communicate with nfs server or not
+	[root@DesktopX~]# showmount -e 172.25.X.11    
+	[root@DesktopX~]# mkdir /sample
+	[root@DesktopX~]# mount -t nfs  172.25.x.11:/nfsshare  /sample
+	[root@DesktopX~]# cd /sample
+	[root@DesktopX~]# ls
+
+                To mount nfs shares persistently on client side:
+                ------------------------------------------------
+	 [root@DesktopX~]# vim /etc/fstab
+	------------------------------------------------------------
+	172.25.X.11:/nfsshare   /sample  nfs   defaults  0 0
+	------------------------------------------------------------
+	#mount -a
+
+	NOTE: contents which are listed can be read  but they can't create new files so
+
+	*****$$$$   For Performing AutoMounting  In Client Side $$$$$ *****
+	--> Install The Packages  For aAutomounting
+	 [root@DesktopX~]#  yum  install  autofs*  
+
+	--> Enable &  Start Deamon (or) Service
+	 [root@DesktopX~]#  systemctl enable   autofs
+	 [root@DesktopX~]#  systemctl restart  autofs
+	
+	---> Create The First Mapper File For AutoMounting
+	 [root@DesktopX~]#  vim  /etc/auto.master.d/server0.autofs
+	/-	/etc/auto.misc
+	/mnt	/etc/auto.misc
+	:wq!	( Save & Quit)
+
+	--> Edit The Second Mapper File For Automounting
+	 [root@DesktopX~]# mkdir  /mnt/public
+	 [root@DesktopX~]#  vim  /etc/auto.misc
+	/mnt/public	-ro,soft,intr  serverX.example.com:/nfsshare
+	coss		-rw,soft,intr  serverX.example.com:/nfsshare
+	:wq!	( Save & Quit)
+
+	--> Restart The Deamon(or) Service Again
+	 [root@DesktopX~]# systemctl restart  autofs
+
+	
+	$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+	******!!!!For Implementation Of  NFS SERVER In Secure Environment            ************************************************
+	=============================================================================================================================
+	
+	Note:- Few Change's Need To be Done On both Server & Client Side Before Implementing NFS Server In a Secure Environment 
+		To Support KERBEROS Authentication We Need To Implement KERBEROS KDC Server.{ Which we are not discussing in this Unit }
+
+	
+	
+					###########  IN NFS SERVER $$$$$$$$$$$$$
+	===============================================================================================================================
+
+	[root@ServerX~]# lab  nfskrb5   setup    [ This is Task has to be done on Server & Desktop Machine Only in Lab Practise Only ]
+
+	--->  Install The Packages Through Yum
+	[root@ServerX~]#   yum  install  nfs*  -y
+
+	--> Download The Kerberos Credential Keyring token file from KDC
+	[root@ServerX~]# wget  -O  /etc/krb5.keytab    http://classroom.example.com/pub/keytabs/serverX.keytab
+
+	--> Edit The Nfs Server Configuration File's
+	[root@ServerX~]# vim   /etc/exports
+	/securenfs	desktopX.example.com(rw,sec=krb5p)
+	:wq!	( Save & Quit )
+
+	 [root@ServerX~]#  vim  /etc/sysconfig/nfs
+	Line No 12  RPCNFSDARGS="-V 4.2"
+	:wq!	( Save & Quit )
+
+	--> Create The Shared Resource for NFS Server
+	[root@ServerX~]# mkdir  /securenfs
+	[root@ServerX~]# touch  /secure/s-nfs{1..6}.txt
+
+	--> Change The Selinux File Level Context Of The Shared Object
+	[root@ServerX~]#  chcon   -t public_content_t   -R   /securenfs
+
+	--> Enable The Service 
+	[root@ServerX~]# systemctl   enable     nfs-server.service
+	[root@ServerX~]# systemctl   enable     nfs-secure.service
+	[root@ServerX~]# systemctl   enable     nfs-secure-server.service
+
+	[root@ServerX~]# systemctl   restart     nfs-server.service
+	[root@ServerX~]# systemctl   restart    nfs-secure.service
+	[root@ServerX~]# systemctl   restart    nfs-secure-server.service
+
+
+	--> Update & Validate The Changes Of Configuration File 
+	[root@ServerX~]#  exportfs  -rvf
+
+
+			###########  IN NFS CLIENT SIDE  $$$$$$$$$$$$$
+	=================================================================================================================================
+
+	[root@DesktopX~]# lab  nfskrb5   setup    [ This is Task has to be done on Server & Desktop Machine Only in Lab Practise Only ]
+
+	--->  Install The Packages Through Yum
+	[root@DesktopX~]#   yum  install  nfs*  -y
+
+	--> Download The Kerberos Credential Keyring token file from KDC [KERBEROS KEY DISTRIBUTION CENTER SERVER]
+	[root@DesktopX~]# wget  -O  /etc/krb5.keytab    http://classroom.example.com/pub/keytabs/desktopX.keytab
+	
+	--> Enable The Service 
+	[root@DesktopX~]# systemctl   enable     nfs-secure.service
+	[root@DesktopX~]# systemctl   restart    nfs-secure.service
+
+	---> For Accessing The Secure NFS Share Drive
+	[root@DesktopX~]#  mkdir  /mnt/securepath
+	[root@DesktopX~]#  mount  -o  sec=krb5p   serverX.example.com:/securenfs     /mnt/securepath
+	[root@DesktopX~]#  cd    /mnt/securepath
+	[root@DesktopX~]#  ls
+	
+	****************** SOME ADDITIONAL Function & Features Can Be Used Under NFS SERVER ********	
+	====================================================================================================================================
+
+
+	**** To export /nfsshare with rw permission:
+	--------------------------------------
+	[root@ServerX~]# chmod 3777 /nfsshare
+
+	[root@ServerX~]# vim /etc/exports
+	----------------------------------------
+	/nfsshare      172.25.X.0/24(rw,sync)
+	-----------------------------------------
+
+	[root@ServerX~]# exportfs -rv   (to update the changes without disrupting the nfs services)
+
+
+
+	no_root_squash    --> on nfs server exported folder client machine root user will be having root privillages 
+                              
+
+                  VIRTUAL ROOT DIRECTORY CONCEPT 
+             ======================================
+
+
+fsid:
+=====
+lets say you have shared /nfsshare directory to the 172.25.X.0/24 and if you want to access the contents of the /nfsshare directory in the client side you need not to mention the /nfsshare dir name just giving / is enough.
+
+but this can be applied on only single share not on multiple shares.
+
+
+
+			IN NFS SERVER
+			=============
+
+	[root@ServerX~]# mkdir /nfs/root/directory
+
+	[root@ServerX~]# cd /nfs/root/directory
+	[root@ServerX~]# cp /etc/fstab  /etc/group   .
+	[root@ServerX~]# cd
+
+
+	[root@ServerX~]# vim /etc/exports
+	---------------------------------------------
+	/nfs/root/directory   172.25.X.5(ro,sync,fsid=0)
+                         
+	----------------------------------------------
+	[root@ServerX~]# exportfs -rv 
+
+
+			go to the client 172.25.X.5 :
+			==============================
+	 [root@DesktopX~]#  showmount -e <nfsserverip>
+	 [root@DesktopX~]#  mkdir /nfsmount
+	 [root@DesktopX~]#  mount -t nfs <nfsserverip>:/    <dirname>
+	 [root@DesktopX~]#  mount -t nfs 172.25.X.10:/      /nfsmount
+	 [root@DesktopX~]#  df -Th
+	 [root@DesktopX~]#  cd <dirname>
+
+
+
+
+                   BINDING:
+                  ==========
+	**** To hide the nfs shared main directory we can use binding option in the nfs server.
+
+	 [root@ServerX~]# mkdir -p /a/b/c/d
+	 [root@ServerX~]# cd /a/b/c/d
+	 [root@ServerX~]# touch file{1..6}
+
+	 [root@ServerX~]# mkdir /hard
+	 [root@ServerX~]# mount --bind /a/b/c/d  /hard
+
+	 [root@ServerX~]# 	#vim /etc/exports
+	------------------------------------------------
+	/hard     172.25.X.0/24(rw,sync)
+	-------------------------------------------------
+	 [root@SeverX~]# exportfs -rv  ( when you edited/done any new changes in  /etc/exports  need not to restart the service just run the below command )
+
+
+	#go to the client and add something to /hard dir if you check in the server updated contents can be seen in the /nfsshare dir
+				IN CLIENT
+	=======================================================
+
+	 [root@DesktopX~]# mount -t nfs 172.25.X.18:/hard  /remote
+	 [root@DesktopX~]# cd /remote
+	 [root@DesktopX~]# touch file{1..6}
+
+
+
+
+                              DIFFERENCE BETWEEN NFSV3 AND NFSV4
+                             =====================================
+
+1. NFSV4 is a network file system. NFSV4 is the successor of NFSV3. . so nfsv4 will be a faster in speed.
+
+NFSv4 uses 32 KBytes pages. Better   performances  will   be  delivered  when  specifying  a  “rsize”  and  a  “wsize”  of  32  KBytes.Default value of mount read and write is 1024 Bytes. 
+
+To enhance performance, specify 32 Kbytes  rsize and wsize :
+#mount -t nfs4 server:/ /mnt/nfs_server -orsize=32768,wsize=32768
+
+2.In order to ensure a better reliability over the Internet, NFSv4 only uses TCP. as a result of it UDP protocal is not available.
+
+2. Crash recovery (Client and server sides)
+
+3. NFSv4 virtual root directory 
+
+4. NFSV4 Firewal friendly
+
+5. Ipv6 Support: IPv6 protocol is supported on the client side. IPv6 is not yet supported on the NFSv4 server side.
+
+6. supports all implementations of KERBEROS.
+
+7. Easy to administer 
+
+******************************************************************************************
+
+#no_root_squash -> in client side root user will have root permission on nfs shared directory .
+{/test     *.example.com(rw,sync,no_root_squash)
+                    
+rpc.mountd  : Performs requested mount and unmount operations
+
+rpc.nfsd    : Responds to client requests for file access & The NFSv3 and NFSv4 protocols are not compatible. A NFSv4 client cannot access a NFSv3 server, and vice versa. However, in order to simplify migrations from NFSv3 to NFSv4, both NFSv3 and NFSv4 services are launched by the command: rpc.nfsd.
+
+rpc.rquotad : Provides statistics on disk quotas to clients/Provides user disk quota management
+
+rpc.statd   : Works with rpc.lockd to provide recovery services
+
+rpc.lockd   : Manages file locks and releases in case of client disconnect
+
+
+
+#vim /etc/hosts.deny
+-------------------------------------------------------------------------
+#nfsd:    ALL
+#lockd:  ALL
+mountd:  ALL
+#statd:   ALL
+
+#rquotad: ALL
+#rpcbind: ALL
+----------------------------------------------------------------------------
+
+#in the client
+
+
+#showmount -e 172.25.X.11   --> 11 is nfs server ip
+--------------------------------------------------------------------------
+rpc mount export: RPC: Authentication error; why = Failed (unspecified error)
+
+--------------------------------------------------------------------------------
+  or   else
+
+ deny all deamons in /etc/hosts.deny
+ allow  whom you want to allow  from /etc/hosts.allow
+
+	

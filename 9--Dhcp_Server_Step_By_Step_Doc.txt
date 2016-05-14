@@ -1,0 +1,115 @@
+		***      Dynamic Host Configuration Protocol      ******
+
+	Feature's
+	1.)  Dhcp Server is used for issueing IP Address Dynamically to the Client Machine.
+	2.)  Dhcp Server can also be used to assign common network information like DNS & Gateway Address.
+	3.)  Dhcp Server can also be used  for reduceing ip conflict's  in network.
+	4.) Dhcp Server perform a hand shakeing process while allocateing  ip address  to client called "DORA".
+
+	******* Requirement's  Of DHCP Server.
+
+	A.)	Packages
+		dhcp*
+	
+	B.)	Service (OR) Deamon's
+		dhcpd
+	
+	C.)	Port Number's
+		67 
+		68
+	
+	D.)	Configuration File Of DHCP Server
+		/etc/dhcp/dhcpd.conf
+	
+	E.)	Debbugging Tool
+		dhcpd
+
+
+
+	STEP  NO  1
+
+	--->  FOR  CHECK THE PACKAGES
+
+	[root@dhcpserver ~]#   rpm     -qa     dhcp-*
+			(or)
+	[root@dhcpserver ~]#  yum    list     installed   dhcp-*
+
+	---> For Removeing The Existing DHCP Packages.
+	[root@dhcpserver ~]# yum remove dhcp-* -y
+
+
+	****   Now Install the packages   ***
+	
+	[root@dhcpserver ~]# yum  install dhcp-* -y
+
+	
+	STEP NO 2
+
+	**** Copy the Sample example Configuration  file  With  original  Configurartion file
+
+	[root@dhcpserver ~]# cd   /usr/share/doc/dhcp-4.1.1/
+	[root@dhcpserver ~]# cd     -p      dhcpd.conf.sample      /etc/dhcpd.conf
+
+
+	STEP NO 3
+
+	*****  Edit Main Configuration File Of Dhcp Server
+
+	[root@dhcpserver ~]# vi /etc/dhcpd.conf
+
+	 subnet 192.168.0.0 netmask 255.255.255.0      {	# Network ID  
+
+	 option routers                    192.168.0.254;	# GateWay or Router IP
+	 option subnet-mask                255.255.255.0;
+
+	 option domain-name                "example.com";	# DNS DOMAIN 
+	 option domain-name-servers        192.168.0.1;		# DNS IP
+	 range dynamic-bootp 192.168.0.150 192.168.0.170;	# Pool of IP
+	 }
+
+	 host nfs {						# reservation of IP
+		 option host-name      "nfs.example.com";	# OR 
+		 hardware ethernet    aa:ab:56:78:AB:CD;	# Mac binding
+	       	fixed-address              192.168.0.10;
+       		}
+		
+
+		:wq!	( Save & Quit )
+
+
+	STEP NO 4 
+	
+	---> For Enableing  The Service (OR) Deamon 
+	
+	[root@dhcpserver ~]# chkconfig    dhcpd   on
+	[root@dhcpserver ~]# service   dhcpd restart
+
+
+
+
+
+
+             ******    CLIENT SIDE CONFIGURATION    *******
+
+	STEP NO  1
+	--> Select the Dhcp in setup  command 
+
+	[root@client ~]# setup
+	Select 
+	[*] Use dynamic IP Configuration ( BOOTP/DHCP)
+
+      
+	STEP NO 2
+	--->   START THE SERVICES
+
+	[root@client ~]# chkconfig  network   on
+	[root@client ~]# service network restart
+
+	STEP NO 3 
+	--->  Now Check wheather all the Entries are comming
+
+	[root@client ~]# ifconfig			# to now IP
+	[root@client ~]# route -nv			# to check GateWay
+	[root@client ~]# cat /etc/resolv.conf	# to check DNS  entries
+
+

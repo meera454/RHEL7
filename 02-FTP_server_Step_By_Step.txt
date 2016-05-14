@@ -1,0 +1,319 @@
+			===========================================
+				 File Transfer Protocol 
+        	                 ======================
+	***** File Transfer Protocol (FTP) is a standard network protocol used to transfer files from one host to another over a TCP-based network, such as the Internet. 
+
+                                 FTP servers for Linux/Unix
+                                 ==========================
+     vsFTPd                     --> Very secure FTP Daemon
+     WU-FTP                     --> Washington University's (St.louis)
+     Proftpd                    --> Professional FTP Daemon
+
+
+	-->  Vsftpd, which stands for “Very Secure FTP Daemon“, 
+	-->  It is an FTP server for Unix-like systems, including Linux.  It supports IPv6 and SSL.
+	-->  Vsftpd is the default FTP server in the Ubuntu, CentOS, Fedora, NimbleX and RHEL Linux distributions.
+		========================================
+                         Service Profile: vsftpd
+                         =======================
+            A.) Package        : vsftpd*
+	
+            B.) Daemon         : vsftpd.service
+
+            C.) Script         : /usr/lib/systemd/system/vsftpd.service
+
+            D.) Ports          : 21/tcp --> to establish connection from client to server. 
+                                 20/tcp --> to transfter the data from server to client random TCP ports
+
+	    E.) Document Root  : /var/ftp
+
+            F.) Configuration  : /etc/vsftpd/vsftpd.conf,
+                                 /etc/vsftpd/user_list,
+                                 /etc/vsftpd/ftpusers,
+                                 /etc/pam.d/vsftpd.
+
+            Related        : tcp_wrappers
+            client tools   : ftp, lftp, firefox, wget 
+            log file       : /var/log/xferlog
+
+    
+
+	**** Before installing the vsftpd service 
+	**** First You need to check , whether your system has vsftpd package installed or not.
+	==================================================================================
+	[root@ServerX~]#rpm -qa | grep -i vsftp
+		             or
+	[root@ServerX~]#rpm -q vsftpd
+
+	**** If this package is not installed then install it by
+	====================================================
+	[root@ServerX~]# yum install vsftpd* -y
+
+	**** To see the vsftpd service configuration files
+	========================================================
+
+	# rpm -qc vsftpd
+
+	-----------------------------------------
+	/etc/logrotate.d/vsftpd
+	/etc/pam.d/vsftpd
+	/etc/vsftpd/ftpusers
+	/etc/vsftpd/user_list
+	/etc/vsftpd/vsftpd.conf
+	------------------------------------------
+
+	IN THE SERVER:
+	=================
+	****  Configuring FTP server with anonymus downlaod facility.
+	===========================================================
+
+	[root@ServerX~] # cd /var/ftp/pub
+	[root@ServerX~] # cp /etc/passwd /etc/group /etc/shadow  .
+	[root@ServerX~] # cd
+
+	**** For Enableing The Service (or) Deamon
+	==========================================
+	[root@ServerX~] # systemctl enable  vsftpd.service
+	[root@ServerX~] # systemctl restart vsftpd.service
+
+NOTE:Remember it will work only for run time. To make it permanent(After rebooting),
+
+
+
+	====================================
+		In client check:
+	===================================
+
+	**** Open the  Web Browser firefox:
+                 ftp://serverip/pub
+                   -----------------------
+                     fstab
+                     group
+                     passwd
+                   -------------------------
+                     right click and select "save link as" and save where u want to save.
+
+	===========================
+	** For Downloading with CLI
+	===========================
+	[root@DesktopX~] # ftp <ip-address of ftp server>
+	    username:ftp
+	    password:enter        (no passwd)
+
+	ftp>cd pub
+	ftp> get passwd
+	ftp> !ls
+   	-->(it shows local system pwd contents,  to check whether the file got downloaded in the local system.)
+	   > bye
+
+
+	***** For Downloading A File With lftp
+	 [root@DesktopX~] # lftp <ipadd>
+	   192.168.0.x>ls
+              >cd pub
+              > get fstab
+              > bye        --> to come out of the ftp server.
+
+	***** For Downloading A File With WGET
+	[root@DesktopX~]# wget ftp://serverip/pub/fstab
+
+	#ls    --> to see downloaded file
+
+	=====================
+	***** IN THE SERVER:
+	=====================
+
+	Blocking FTP user from anonymous access from client side
+	==========================================================
+
+	[root@ServerX~]#vim /etc/vsftpd/vsftpd.conf
+	-----------------------------------------------
+	anonymous_enable=YES   (before)  line no :12
+	anonymous_enable=NO     (after)
+	:wq!
+	---------------------------------------------
+
+	[root@ServerX~]# echo redhat | passwd   --stdin ftp
+
+	--------------------------------------------------------
+	For Enableing The Service 
+	===========================================================
+	[root@ServerX~] # systemctl enable  vsftpd.service
+	[root@ServerX~] # systemctl restart vsftpd.service
+
+In CLIENT:
+---------
+#ftp 192.168.0.13
+ username:ftp
+ passwd  :redhat
+ftp user can login and can access ftp server pub directory  contents
+
+
+now try to login in the client machine  with non-anonymous(STUDENT) user of ftp server:
+========================================================================================
+#ftp <serverip>
+username=student
+passwd=student
+
+login fails so 
+
+	---------------
+	IN THE SERVER
+	-------------
+	For Enableing The Selinux Booleans
+	===================================
+
+	#getsebool -a | grep ftp
+
+	#setsebool -P ftp_home_dir on
+
+
+IN THE CLIENT:
+--------------
+not try to login with the student user with his passwd he can login.but when student user logs in in the client he gets access to bydefault to his home direcotry , if you want to access pub directory of ftp server #cd /var/ftp/pub
+
+IN THE CLIENT :
+--------------
+
+try to login as root user with his passwd he can't login  , login fails. so
+
+ALLOWING root to ACCESS from client machine to FTP server
+=========================================================
+IN THE SERVER
+-------------
+#vim /etc/vsftpd/user_list
+#vim /etc/vsftpd/ftpusers
+
+remove root user entry(dd) from the above two files and restart the service (!ser)
+
+#ftp 192.168.0.13   (login as any user try to upload no user can upload to the ftp server)
+
+
+UPLOADING FILE TO FTP SERVER:
+=============================
+IN THE SERVER:
+#mkdir -p /var/ftp/upload
+#chgrp ftp /var/ftp/upload
+#chmod g+w /var/ftp/upload
+       or
+#chmod 777 /var/ftp/upload
+
+#
+#ls -ldZ /var/ftp/upload  ( to see selinux context)
+#chcon -t public_content_rw_t /var/ftp/upload  ( to change the selinux context type of /var/ftp/upload dir)
+
+
+#vim /etc/vsftpd/vsftpd.conf
+----------------------------
+uncomment 27 line 
+:wq!
+----------------------------
+#getsebool -a | grep ftp
+#setsebool -P allow_ftpd_anon_write on
+
+--------------------------------------------------------
+	For Enableing The Service 
+===========================================================
+	[root@ServerX~] # systemctl enable  vsftpd.service
+	[root@ServerX~] # systemctl restart vsftpd.service
+
+
+IN THE CLIENT:
+-------------
+# ftp <serverip> 
+#try to upload file users can
+
+                           DROP BOX CONFIGURATION: 
+                           =======================
+
+IN SERVER:
+
+#chmod 730 /var/ftp/upload 
+#service vsftpd restart
+
+
+Denyin FTP server access for specific users:
+=============================================
+IN THE SERVER:
+--------------
+#vim /etc/vsftpd/user_list
+---------------------------
+enter user names whome u want to deny ftp server access
+
+dax
+max
+student
+john
+---------------------------------------------------
+#useradd dax
+#useradd max
+#echo "redhat" | passwd --stdin dax
+#echo "redhat" | passwd --stdin max
+
+#service vsftpd restart
+#chkconfig vsftpd on
+
+IN THE CLIENT:
+-------------
+try to login to ftp server with those restricted user they can't login
+#ftp <serverip>
+username dax
+*********
+*********
+dax cant login
+
+
+
+		====================================
+                          TCP WRAPPERS:
+                        ==================
+using TCP wrappers we can allow or deny the access to FTP server from a  particular host or domain.
+but for that the services must have the module called "libwrap.so" then only we can use TCPWRAPPER to allow or deny access o perticular services
+
+HOW TO CHECK :
+==============
+#which vsftpd
+#ldd <vsftpd absolute path> | grep libwrap.so
+
+
+#vim /etc/hosts.allow 
+#vim /etc/hosts.deny 
+
+sample : to block FTP SERVER access to the host desktop2.example.com
+====================================================================  
+
+#vim /etc/hosts.deny
+-----------------------------------------------------------------
+vsftpd:     desktop2.example.com  (or) 192.168.0.2
+------------------------------------------------------------------
+
+for the whole domain :
+------------------------------------------------
+vsftpd:       .example.com (or) 192.168.0.0/24   
+------------------------------------------------
+
+==>Clients within the example.com domain should have access to your /var/ftp directory. Clients outside example.com doamin should not have any access to ftp service.
+-------------------------------------------------------
+vsftpd:     ALL EXCEPT .example.com (. is must)
+                           or 
+                       *.example.com  
+
+--------------------------------------------------------
+	For Enableing The Service 
+===========================================================
+	[root@ServerX~] # systemctl enable  vsftpd.service
+	[root@ServerX~] # systemctl restart vsftpd.service
+
+
+                     Types  Of FTP
+                     =============
+Active FTP:  In which the ftp server initiates a data transfer back to the client.
+Passive FTP: Where the connection is initiated from the client. 
+
+
+=>FTP is built on a client-server architecture and utilizes separate control and data connections between the client and server.FTP users may authenticate themselves using a clear-text sign-in protocol but can connect anonymously if the server is configured to allow it.
+
+what do you already know about implementing an FTP server?
+
+listen_port=2012
+ftp_data_port=2011
